@@ -1301,16 +1301,29 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Connected: {ctx.room.name}")
 
     # Listen for context_sync from frontend (what tab/project user is looking at)
+    # Use *args to handle both LiveKit SDK versions:
+    #   newer: single DataPacket object  |  older: (data, participant, kind, topic)
     @ctx.room.on("data_received")
-    def on_context_sync(data: bytes, participant, kind, topic: str):
+    def on_context_sync(*args):
         global _current_context
-        if topic != "context_sync":
-            return
         try:
-            ctx_data = json.loads(data.decode("utf-8"))
+            if len(args) == 1:
+                # Newer livekit-rtc: single DataPacket argument
+                pkt = args[0]
+                raw   = bytes(pkt.data) if hasattr(pkt, "data") else b""
+                topic = getattr(pkt, "topic", "")
+            else:
+                # Older API: (data_bytes, participant, kind, topic)
+                raw   = args[0] if args else b""
+                topic = args[3] if len(args) > 3 else ""
+
+            if topic != "context_sync":
+                return   # ignore ui_sync and other topics
+
+            ctx_data = json.loads(raw.decode("utf-8"))
             _current_context.update(ctx_data)
             logger.info(
-                f"Context: tab={_current_context['activeTab']} "
+                f"Context: tab={_current_context['activeTab']!r} "
                 f"project={_current_context['activeProjectName']!r}"
             )
         except Exception as e:
