@@ -27,14 +27,26 @@ AGENT_NAME   = "pikaui-pm"
 # ── Singleton DB pool ──────────────────────────────────
 _pool: asyncpg.Pool | None = None
 
+async def _init_conn(conn):
+    """Called by asyncpg for every new pool connection. Neon pooler ignores
+    server_settings, so we must SET search_path explicitly after connect."""
+    await conn.execute("SET search_path TO pikaui")
+
+
 async def get_pool() -> asyncpg.Pool:
     global _pool
-    if _pool is None:
-        _pool = await asyncpg.create_pool(
-            DATABASE_URL,
-            server_settings={"search_path": "pikaui"},
-            min_size=1, max_size=5,
-        )
+    if _pool is not None:
+        try:
+            if not _pool._closed:
+                return _pool
+        except Exception:
+            pass
+        _pool = None
+    _pool = await asyncpg.create_pool(
+        DATABASE_URL,
+        init=_init_conn,
+        min_size=1, max_size=5,
+    )
     return _pool
 
 # ── Room ref for data channel ──────────────────────────
@@ -1295,7 +1307,8 @@ ANWEISUNGEN:
 # ═══════════════════════════════════════════════════════
 
 async def entrypoint(ctx: JobContext):
-    global _room_ref
+    global _room_ref, _pool
+    _pool = None  # Reset so a fresh pool is created for this job event loop
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     _room_ref = ctx.room
     logger.info(f"Connected: {ctx.room.name}")
