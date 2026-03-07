@@ -40,6 +40,13 @@ async def get_pool() -> asyncpg.Pool:
 # ── Room ref for data channel ──────────────────────────
 _room_ref = None
 
+# Screen context — updated by frontend via context_sync data channel
+_current_context: dict = {
+    "activeTab":         "overview",
+    "activeProjectId":   None,
+    "activeProjectName": "",
+}
+
 async def _send_ui(component: str, props: dict):
     """Send a widget render command to the frontend.
     Retries up to 10 times (1s total) if local_participant is not yet ready."""
@@ -157,10 +164,12 @@ async def show_board(context: RunContext, project_name: str = ""):
     """Show the Kanban board for a project."""
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Use screen context as fallback if user didn't specify a project
+        effective_project = project_name or _current_context.get("activeProjectName", "")
         proj = await conn.fetchrow(
-            "SELECT id, name FROM projects WHERE name ILIKE $1" if project_name
+            "SELECT id, name FROM projects WHERE name ILIKE $1" if effective_project
             else "SELECT id, name FROM projects WHERE status='active' LIMIT 1",
-            *([f"%{project_name}%"] if project_name else [])
+            *([f"%{effective_project}%"] if effective_project else [])
         )
         if not proj:
             return "Project not found."
@@ -1204,7 +1213,12 @@ async def show_blockers(context: RunContext, task_title: str = ""):
 #  AGENT
 # ═══════════════════════════════════════════════════════
 
-SYSTEM_PROMPT = """You are PlanBot — voice-first AI project manager for pikAui PM.
+SYSTEM_PROMPT = """You are PlanBot, a screen-aware voice project manager — voice-first AI project manager for pikAui PM.
+- You know what the user is looking at: current tab and project are tracked in real time.
+- When no project is specified, use the currently visible project from the user's screen.
+- Keep responses to 1-2 short sentences (voice-optimized).
+- After mutations (create/update), confirm briefly and the dashboard will update automatically.
+
 
 TOOLS AVAILABLE:
 1. list_projects         → Switch to overview tab, show all projects
@@ -1285,6 +1299,22 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     _room_ref = ctx.room
     logger.info(f"Connected: {ctx.room.name}")
+
+    # Listen for context_sync from frontend (what tab/project user is looking at)
+    @ctx.room.on("data_received")
+    def on_context_sync(data: bytes, participant, kind, topic: str):
+        global _current_context
+        if topic != "context_sync":
+            return
+        try:
+            ctx_data = json.loads(data.decode("utf-8"))
+            _current_context.update(ctx_data)
+            logger.info(
+                f"Context: tab={_current_context['activeTab']} "
+                f"project={_current_context['activeProjectName']!r}"
+            )
+        except Exception as e:
+            logger.warning(f"Context parse error: {e}")
 
     # ── Detect language from dispatch metadata ────────────────────────────────
     lang = "en"

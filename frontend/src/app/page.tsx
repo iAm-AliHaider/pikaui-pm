@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { PikAuiProvider }  from "@/components/PikAuiProvider";
-import { VoiceSidebar }    from "@/components/VoiceSidebar";
 import { Dashboard }       from "@/components/Dashboard";
 import { LanguageToggle, useLocale } from "@/components/LocaleContext";
 import { fetchToken }      from "@/lib/livekit-config";
@@ -12,26 +11,27 @@ import { motion } from "framer-motion";
 const ANALYTICS_TABS = new Set(["analytics", "milestones", "timelog", "summary"]);
 
 export default function Home() {
-  const { locale, t }               = useLocale();
-  const [token, setToken]           = useState("");
-  const [isLoading, setIsLoading]   = useState(true);
-  const [data, setData]             = useState<DashboardData | null>(null);
-  const [analyticsData, setAnalyticsData]       = useState<AnalyticsData | null>(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [activeTab, setActiveTab]               = useState("overview");
-  const [activeProjectId, setActiveProjectId]   = useState<string | null>(null);
-  const [selectedTask, setSelectedTask]         = useState<Task | null>(null);
+  const { locale, t }           = useLocale();
+  const [token, setToken]       = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData]         = useState<DashboardData | null>(null);
+  const [analyticsData, setAnalyticsData]         = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading]   = useState(false);
+  const [activeTab, setActiveTab]                 = useState("overview");
+  const [activeProjectId, setActiveProjectId]     = useState<string | null>(null);
+  const [selectedTask, setSelectedTask]           = useState<Task | null>(null);
   const [voiceSessionActive, setVoiceSessionActive] = useState(false);
-  const [voiceWidgets, setVoiceWidgets] = useState<{ id: string; component: string; props: Record<string, unknown> }[]>([]);
+  const [lastToast, setLastToast]                 = useState<string | null>(null);
   const [roomName] = useState(() => `pikAui-pm-${Date.now()}`);
 
-  // Refs so callbacks always close over latest values
-  const refreshRef          = useRef<() => void>(() => {});
   const refreshAnalyticsRef = useRef<() => void>(() => {});
   const activeProjectIdRef  = useRef<string | null>(null);
   activeProjectIdRef.current = activeProjectId;
 
-  // ── Fetch dashboard data ──────────────────────────────────────────────────
+  // ── Active project name (derived) ─────────────────────────────────────────
+  const activeProject = data?.projects.find(p => p.id === activeProjectId) ?? data?.projects?.[0] ?? null;
+
+  // ── Fetch dashboard data ───────────────────────────────────────────────────
   const fetchData = useCallback(async (forceProjectId?: string) => {
     try {
       const res = await fetch(`/api/data?_t=${Date.now()}`, { cache: "no-store" });
@@ -47,7 +47,7 @@ export default function Home() {
     } catch (e) { console.error("Data fetch:", e); }
   }, []);
 
-  // ── Fetch analytics data ──────────────────────────────────────────────────
+  // ── Fetch analytics ────────────────────────────────────────────────────────
   const fetchAnalytics = useCallback(async (projectId?: string | null) => {
     setAnalyticsLoading(true);
     try {
@@ -61,13 +61,11 @@ export default function Home() {
     finally { setAnalyticsLoading(false); }
   }, []);
 
-  refreshRef.current          = () => fetchData();
   refreshAnalyticsRef.current = () => fetchAnalytics();
 
   useEffect(() => { fetchData(); }, []);
 
-  // ── Auto-polling fallback (every 4s when voice session is active) ─────────
-  // Guarantees the board updates even if data-channel events are dropped.
+  // ── 4s polling while voice session active ─────────────────────────────────
   useEffect(() => {
     if (!voiceSessionActive) return;
     const id = setInterval(() => {
@@ -76,20 +74,17 @@ export default function Home() {
     return () => clearInterval(id);
   }, [voiceSessionActive, fetchData]);
 
-  // ── Auto-fetch analytics when switching to analytics tabs ─────────────────
+  // ── Tab switching ──────────────────────────────────────────────────────────
   const handleSetActiveTab = useCallback((tab: string) => {
     setActiveTab(tab);
     if (ANALYTICS_TABS.has(tab) && !analyticsData) fetchAnalytics();
   }, [analyticsData, fetchAnalytics]);
 
-  // Re-fetch analytics when project changes on an analytics tab
   useEffect(() => {
-    if (activeProjectId && ANALYTICS_TABS.has(activeTab)) {
-      fetchAnalytics(activeProjectId);
-    }
+    if (activeProjectId && ANALYTICS_TABS.has(activeTab)) fetchAnalytics(activeProjectId);
   }, [activeProjectId]);
 
-  // ── Token — re-fetch whenever locale changes ──────────────────────────────
+  // ── Token ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     async function getToken() {
@@ -98,7 +93,7 @@ export default function Home() {
         const { token: tk } = await fetchToken(roomName, `user-${Date.now()}`, locale);
         if (!cancelled) {
           setToken(tk);
-          setVoiceSessionActive(true); // mark session as active once token is ready
+          setVoiceSessionActive(true);
         }
       } catch { console.error("Token error"); }
       finally { if (!cancelled) setIsLoading(false); }
@@ -107,47 +102,27 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [roomName, locale]);
 
-  // ── Voice event handler ───────────────────────────────────────────────────
+  // ── Voice event handler ────────────────────────────────────────────────────
   const handleVoiceEvent = useCallback((event: { type: string; [k: string]: unknown }) => {
-    console.log("[pikAui] voice event:", event.type, event);
+    const t = event.type;
 
-    if (event.type === "tambo_render") {
-      const { component, props } = event as { type: string; component: string; props: Record<string, unknown> };
-      setVoiceWidgets(w => [...w, { id: `w-${Date.now()}-${Math.random()}`, component, props }]);
+    // Navigation events (primary path — agent sends these with retry logic)
+    if (t === "switch_tab") {
+      setActiveTab(event.tab as string);
+      return;
+    }
 
-      // Piggyback: TaskCard means a task was created → switch to that project's board
-      if (component === "TaskCard") {
-        const task = props.task as Record<string, unknown> | undefined;
-        const pid  = task?.project_id as string | undefined;
-        console.log("[pikAui] TaskCard received — switching to board, project:", pid);
-        if (pid) setActiveProjectId(pid);
-        setActiveTab("board");
-        // Fetch fresh data to show the new task (slight delay for DB to settle)
-        setTimeout(() => fetchData(pid ?? undefined), 300);
-      }
-
-      // Piggyback: StatusBanner after a status change → refresh board
-      if (component === "StatusBanner") {
-        setActiveTab("board");
-        setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 300);
-      }
-
-    } else if (event.type === "switch_tab") {
-      const tab = event.tab as string;
-      console.log("[pikAui] switch_tab:", tab);
-      setActiveTab(tab);
-
-    } else if (event.type === "switch_project") {
+    if (t === "switch_project") {
       const pid = (event.projectId as string)?.trim();
-      console.log("[pikAui] switch_project:", pid);
       if (pid) {
         setActiveProjectId(pid);
         setTimeout(() => fetchData(pid), 150);
       }
+      return;
+    }
 
-    } else if (event.type === "refresh") {
+    if (t === "refresh") {
       const section = event.section as string;
-      console.log("[pikAui] refresh:", section);
       if (section === "analytics") {
         setTimeout(() => refreshAnalyticsRef.current(), 400);
       } else {
@@ -158,7 +133,36 @@ export default function Home() {
             setData(d);
             setActiveProjectId(prev => prev ?? (d.projects?.[0]?.id ?? null));
           }
-        }, 350);
+        }, 300);
+      }
+      return;
+    }
+
+    // Widget events (secondary path — used as fallback navigation trigger)
+    if (t === "tambo_render") {
+      const component = event.component as string;
+      const props     = event.props as Record<string, unknown>;
+
+      // TaskCard: switch to that project's board + refresh
+      if (component === "TaskCard") {
+        const task = props?.task as Record<string, unknown> | undefined;
+        const pid  = task?.project_id as string | undefined;
+        setActiveTab("board");
+        if (pid) setActiveProjectId(pid);
+        setTimeout(() => fetchData(pid ?? undefined), 300);
+      }
+
+      // StatusBanner: show as toast near the PTT button + refresh board
+      if (component === "StatusBanner") {
+        const msg = props?.message as string;
+        if (msg) setLastToast(msg);
+        setActiveTab("board");
+        setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 300);
+      }
+
+      // KanbanBoard / other widgets — just refresh data
+      if (component === "KanbanBoard" || component === "SprintAnalytics" || component === "TeamWorkload") {
+        setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 200);
       }
     }
   }, [fetchData]);
@@ -179,11 +183,15 @@ export default function Home() {
 
   return (
     <div className="min-h-[100dvh] flex overflow-hidden" style={{ background: "#f0f2f7" }}>
-      <PikAuiProvider token={token} onVoiceEvent={handleVoiceEvent}>
-        <VoiceSidebar
-          voiceWidgets={voiceWidgets}
-          onClearWidgets={() => setVoiceWidgets([])}
-        />
+      <PikAuiProvider
+        token={token}
+        onVoiceEvent={handleVoiceEvent}
+        activeTab={activeTab}
+        activeProjectId={activeProjectId}
+        activeProjectName={activeProject?.name ?? ""}
+        lastToast={lastToast}
+      >
+        {/* Main dashboard — full width, no sidebar */}
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
           {data ? (
             <Dashboard
