@@ -31,7 +31,8 @@ export function AnalyticsTab({ data, projectId, projectName }: AnalyticsTabProps
 
   const budgetBurnPercent = useMemo(() => {
     if (!data?.budget || data.budget.length === 0) return 0;
-    return Math.max(...data.budget.map((b) => (b.cost_burned / b.budget_allocated) * 100));
+    const pcts = data.budget.map((b) => b.budget_allocated > 0 ? ((b.cost_burned || 0) / b.budget_allocated) * 100 : 0);
+    return pcts.length > 0 ? Math.max(...pcts) : 0;
   }, [data?.budget]);
 
   const onTrackMilestones = useMemo(() => {
@@ -59,7 +60,8 @@ export function AnalyticsTab({ data, projectId, projectName }: AnalyticsTabProps
     }));
   }, [data?.velocity]);
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value == null || isNaN(value)) return 'SAR 0';
     return `SAR ${value.toLocaleString()}`;
   };
 
@@ -70,10 +72,12 @@ export function AnalyticsTab({ data, projectId, projectName }: AnalyticsTabProps
   };
 
   const getEstimatedCompletion = (budget: BudgetStat) => {
-    if (!budget.deadline || budget.cost_burned === 0) return null;
-    const deadline = new Date(budget.deadline);
+    if (!budget.deadline || !budget.cost_burned || budget.budget_allocated === 0) return null;
     const rate = budget.cost_burned / budget.budget_allocated;
+    if (!isFinite(rate) || rate === 0) return null;
+    const deadline = new Date(budget.deadline);
     const estimated = new Date(deadline.getTime() / rate);
+    if (!isFinite(estimated.getTime())) return null;
     return formatDate(estimated.toISOString());
   };
 
@@ -302,7 +306,7 @@ export function AnalyticsTab({ data, projectId, projectName }: AnalyticsTabProps
         {(data?.budget || []).length > 0 ? (
           <div className="space-y-4">
             {data.budget.map((budget) => {
-              const burnPercent = (budget.cost_burned / budget.budget_allocated) * 100;
+              const burnPercent = budget.budget_allocated > 0 ? ((budget.cost_burned || 0) / budget.budget_allocated) * 100 : 0;
               const barColor = burnPercent > 80 ? "#ef4444" : burnPercent > 60 ? "#f59e0b" : "#10b981";
               const estimatedDate = getEstimatedCompletion(budget);
               return (

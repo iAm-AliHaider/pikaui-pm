@@ -72,9 +72,9 @@ export async function GET(req: Request) {
     const budget = await query(`
       SELECT
         p.id, p.name, p.color,
-        COALESCE(p.budget,0)::float                          as budget_allocated,
-        SUM(tl.hours * COALESCE(u.hourly_rate,75))::float   as cost_burned,
-        SUM(tl.hours)::float                                 as total_hours,
+        COALESCE(p.budget,0)::float                               as budget_allocated,
+        COALESCE(SUM(tl.hours * COALESCE(u.hourly_rate,75)), 0)::float as cost_burned,
+        COALESCE(SUM(tl.hours), 0)::float                             as total_hours,
         p.deadline
       FROM pikaui.projects p
       LEFT JOIN pikaui.time_logs tl ON tl.project_id = p.id
@@ -90,12 +90,12 @@ export async function GET(req: Request) {
         u.name,
         COALESCE(u.avatar_color,'#6c5ce7') as avatar_color,
         COALESCE(u.hourly_rate, 75)::float  as hourly_rate,
-        SUM(tl.hours) FILTER (
+        COALESCE(SUM(tl.hours) FILTER (
           WHERE tl.log_date >= date_trunc('week', CURRENT_DATE)
-        )::float as hours_this_week,
-        SUM(tl.hours) FILTER (
+        ), 0)::float as hours_this_week,
+        COALESCE(SUM(tl.hours) FILTER (
           WHERE tl.log_date >= CURRENT_DATE - INTERVAL '29 days'
-        )::float as hours_this_month,
+        ), 0)::float as hours_this_month,
         COUNT(DISTINCT t.id)::int as active_tasks
       FROM pikaui.users u
       LEFT JOIN pikaui.time_logs tl ON tl.user_id = u.id
