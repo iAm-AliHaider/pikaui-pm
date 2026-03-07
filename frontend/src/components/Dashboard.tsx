@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardData, Task, AnalyticsData } from "@/lib/types";
 import { OverviewTab }    from "./tabs/OverviewTab";
@@ -7,6 +8,8 @@ import { BoardTab }       from "./tabs/BoardTab";
 import { TeamTab }        from "./tabs/TeamTab";
 import { DocsTab }        from "./tabs/DocsTab";
 import { TaskModal }      from "./modals/TaskModal";
+import { CreateTaskModal }    from "./modals/CreateTaskModal";
+import { CreateProjectModal } from "./modals/CreateProjectModal";
 import dynamic from "next/dynamic";
 
 // Lazy-load heavy chart tabs
@@ -59,6 +62,10 @@ export function Dashboard({
   selectedTask, setSelectedTask,
   onRefresh, onRefreshAnalytics,
 }: DashboardProps) {
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [createTaskStatus, setCreateTaskStatus] = useState("todo");
+  const [showCreateProject, setShowCreateProject] = useState(false);
+
   const activeProject = data.projects.find(p => p.id === activeProjectId) ?? data.projects[0];
   const projectTasks  = data.tasks.filter(t => t.project_id === activeProjectId);
   const projectDocs   = data.documents.filter(d => d.project_id === activeProjectId);
@@ -118,11 +125,29 @@ export function Dashboard({
                   className="px-2 py-0.5 rounded-full text-[10px] font-semibold animate-pulse"
                   style={{ background: "#fee2e2", color: "#ef4444" }}
                 >
-                  ⚠ {analyticsData!.risks.length} risk{analyticsData!.risks.length !== 1 ? "s" : ""}
+                  Risk {analyticsData!.risks.length}
                 </button>
               )}
             </div>
           )}
+
+          {/* New Task & New Project buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowCreateTask(true)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl text-white"
+              style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
+            >
+              New Task
+            </button>
+            <button
+              onClick={() => setShowCreateProject(true)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border"
+              style={{ borderColor: "#6c5ce7", color: "#6c5ce7" }}
+            >
+              New Project
+            </button>
+          </div>
         </div>
       </header>
 
@@ -167,6 +192,7 @@ export function Dashboard({
                 team={data.team}
                 sprints={data.sprints.filter(s => s.project_id === activeProjectId)}
                 onTaskClick={setSelectedTask}
+                onCreateTask={() => setShowCreateTask(true)}
               />
             )}
             {activeTab === "board" && (
@@ -175,6 +201,11 @@ export function Dashboard({
                 project={activeProject}
                 onTaskClick={setSelectedTask}
                 onRefresh={onRefresh}
+                onCreateTask={(status) => { setCreateTaskStatus(status); setShowCreateTask(true); }}
+                onDeleteTask={async (taskId) => {
+                  await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+                  onRefresh();
+                }}
               />
             )}
             {activeTab === "team" && (
@@ -250,6 +281,27 @@ export function Dashboard({
           />
         )}
       </AnimatePresence>
+
+      {/* ── Create Task Modal ────────────────────────────── */}
+      {showCreateTask && (
+        <CreateTaskModal
+          projects={data.projects}
+          team={data.team}
+          defaultProjectId={activeProjectId ?? undefined}
+          defaultStatus={createTaskStatus}
+          onClose={() => setShowCreateTask(false)}
+          onCreated={() => { setShowCreateTask(false); onRefresh(); }}
+        />
+      )}
+
+      {/* ── Create Project Modal ──────────────────────────── */}
+      {showCreateProject && (
+        <CreateProjectModal
+          team={data.team}
+          onClose={() => setShowCreateProject(false)}
+          onCreated={() => { setShowCreateProject(false); onRefresh(); }}
+        />
+      )}
     </div>
   );
 }

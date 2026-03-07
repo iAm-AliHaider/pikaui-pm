@@ -11,12 +11,13 @@ const AVATAR_GRADS = [
   "linear-gradient(135deg,#a29bfe,#6c5ce7)",
 ];
 
-export function OverviewTab({ project, tasks, team, sprints, onTaskClick }: {
+export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCreateTask }: {
   project: Project | undefined;
   tasks: Task[];
   team: TeamMember[];
   sprints: Sprint[];
   onTaskClick: (t: Task) => void;
+  onCreateTask?: () => void;
 }) {
   if (!project) return <div className="p-8 text-gray-400 text-sm">No project selected.</div>;
 
@@ -141,7 +142,18 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick }: {
       {/* ── Active Tasks ── */}
       <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} transition={{ delay:0.25 }}
         className="lg:col-span-3 bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor:"#e8eaf0" }}>
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">In Progress ({inProgress.length})</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-700">In Progress ({inProgress.length})</h3>
+          {onCreateTask && (
+            <button
+              onClick={onCreateTask}
+              className="text-xs font-medium text-white px-2.5 py-1 rounded-lg"
+              style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
+            >
+              + Add Task
+            </button>
+          )}
+        </div>
         {inProgress.length === 0
           ? <p className="text-sm text-gray-400">No active tasks.</p>
           : (

@@ -16,11 +16,13 @@ const PRIORITY_STYLE: Record<string, { dot: string; badge: string }> = {
   low:    { dot: "#10b981", badge: "bg-emerald-50 text-emerald-600" },
 };
 
-export function BoardTab({ tasks, project, onTaskClick, onRefresh }: {
+export function BoardTab({ tasks, project, onTaskClick, onRefresh, onCreateTask, onDeleteTask }: {
   tasks: Task[];
   project: Project | undefined;
   onTaskClick: (t: Task) => void;
   onRefresh: () => void;
+  onCreateTask: (defaultStatus: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [droppingCol, setDroppingCol] = useState<string | null>(null);
@@ -58,7 +60,15 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh }: {
                   <div className="w-2.5 h-2.5 rounded-full" style={{ background: col.dotColor }} />
                   <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{col.label}</span>
                 </div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white/80 text-gray-500 shadow-sm">{colTasks.length}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onCreateTask(col.id)}
+                    className="w-6 h-6 rounded-full border-2 border-dashed text-gray-400 hover:border-purple-400 hover:text-purple-500 text-sm font-bold transition-colors flex items-center justify-center"
+                  >
+                    +
+                  </button>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white/80 text-gray-500 shadow-sm">{colTasks.length}</span>
+                </div>
               </div>
 
               {/* Cards */}
@@ -76,13 +86,25 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh }: {
                         onDragStart={() => setDraggingId(task.id)}
                         onDragEnd={() => setDraggingId(null)}
                         onClick={() => onTaskClick(task)}
-                        className="bg-white rounded-xl p-3.5 border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group"
+                        className="bg-white rounded-xl p-3.5 border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group relative"
                         style={{
                           borderColor: isOverdue(task) ? "#fecaca" : "#e8eaf0",
                           background: isOverdue(task) ? "#fff5f5" : "white",
                           opacity: draggingId === task.id ? 0.5 : 1,
                         }}
                       >
+                        {/* Delete button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm("Delete this task?")) {
+                              onDeleteTask(task.id);
+                            }
+                          }}
+                          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold"
+                        >
+                          ×
+                        </button>
                         {/* Priority + overdue */}
                         <div className="flex items-center justify-between mb-2">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${p.badge}`}>
