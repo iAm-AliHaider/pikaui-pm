@@ -41,8 +41,14 @@ async def get_pool() -> asyncpg.Pool:
 _room_ref = None
 
 async def _send_ui(component: str, props: dict):
-    """Send a widget render command to the frontend."""
+    """Send a widget render command to the frontend.
+    Retries up to 10 times (1s total) if local_participant is not yet ready."""
+    for attempt in range(10):
+        if _room_ref and _room_ref.local_participant:
+            break
+        await asyncio.sleep(0.1)
     if not _room_ref or not _room_ref.local_participant:
+        logger.error(f"_send_ui FAILED after retries: {component}")
         return
     payload = json.dumps({
         "type": "tambo_render",
@@ -53,9 +59,15 @@ async def _send_ui(component: str, props: dict):
     logger.info(f"UI sent: {component}")
 
 async def _send_event(event_type: str, data: dict = {}):
-    """Send a dashboard navigation/refresh event to the frontend."""
+    """Send a dashboard navigation/refresh event to the frontend.
+    Retries up to 10 times (1s total) if local_participant is not yet ready."""
+    for attempt in range(10):
+        if _room_ref and _room_ref.local_participant:
+            break
+        logger.warning(f"_send_event waiting for room (attempt {attempt+1}): {event_type}")
+        await asyncio.sleep(0.1)
     if not _room_ref or not _room_ref.local_participant:
-        logger.warning(f"_send_event skipped (no room): {event_type}")
+        logger.error(f"_send_event FAILED after retries: {event_type}")
         return
     payload = json.dumps({"type": event_type, **data}).encode("utf-8")
     await _room_ref.local_participant.publish_data(payload, topic="ui_sync", reliable=True)
