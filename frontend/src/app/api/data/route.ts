@@ -50,6 +50,7 @@ export async function GET() {
                COALESCE(SUM(t.hours_worked), 0)::float as hours_worked
         FROM pikaui.users u
         LEFT JOIN pikaui.tasks t ON t.assignee_id = u.id
+        WHERE u.is_active = true
         GROUP BY u.id, u.name, u.role, u.email, u.avatar_color, u.department
         ORDER BY total_tasks DESC
       `),
