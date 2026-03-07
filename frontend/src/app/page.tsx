@@ -7,10 +7,13 @@ import { LanguageToggle, useLocale } from "@/components/LocaleContext";
 import { fetchToken }      from "@/lib/livekit-config";
 import { DashboardData, Task, AnalyticsData } from "@/lib/types";
 import { motion } from "framer-motion";
+import { useUser } from "@/components/UserContext";
+import { LoginScreen } from "@/components/LoginScreen";
 
 const ANALYTICS_TABS = new Set(["analytics", "milestones", "timelog", "summary"]);
 
 export default function Home() {
+  const { currentUser, logout } = useUser();
   const { locale, t }           = useLocale();
   const [token, setToken]       = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +170,9 @@ export default function Home() {
     }
   }, [fetchData]);
 
+  // Show login screen if no user is authenticated
+  if (!currentUser) return <LoginScreen />;
+
   if (isLoading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: "#f8f9fc" }}>
@@ -206,6 +212,7 @@ export default function Home() {
               setSelectedTask={setSelectedTask}
               onRefresh={fetchData}
               onRefreshAnalytics={() => fetchAnalytics()}
+              onLogout={logout}
               languageToggle={<LanguageToggle />}
             />
           ) : (

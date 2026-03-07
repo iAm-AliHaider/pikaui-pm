@@ -13,6 +13,10 @@ import { CreateProjectModal } from "./modals/CreateProjectModal";
 import { useLocale, LanguageToggle } from "./LocaleContext";
 import dynamic from "next/dynamic";
 
+import { MyTasksTab } from "./tabs/MyTasksTab";
+import { UserManagementTab } from "./tabs/UserManagementTab";
+import { useUser } from "./UserContext";
+
 // Lazy-load heavy chart tabs
 const AnalyticsTab   = dynamic(() => import("./tabs/AnalyticsTab").then(m => ({ default: m.AnalyticsTab })), { ssr: false, loading: () => <TabSkeleton /> });
 const MilestonesTab  = dynamic(() => import("./tabs/MilestonesTab").then(m => ({ default: m.MilestonesTab })), { ssr: false, loading: () => <TabSkeleton /> });
@@ -42,6 +46,7 @@ interface DashboardProps {
   setSelectedTask: (t: Task | null) => void;
   onRefresh: () => void;
   onRefreshAnalytics: () => void;
+  onLogout?: () => void;
   languageToggle?: React.ReactNode;
 }
 
@@ -50,10 +55,11 @@ export function Dashboard({
   activeTab, setActiveTab,
   activeProjectId, setActiveProjectId,
   selectedTask, setSelectedTask,
-  onRefresh, onRefreshAnalytics,
+  onRefresh, onRefreshAnalytics, onLogout,
   languageToggle,
 }: DashboardProps) {
   const { t } = useLocale();
+  const { currentUser, isAdmin, isManager } = useUser();
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [createTaskStatus, setCreateTaskStatus] = useState("todo");
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -68,6 +74,8 @@ export function Dashboard({
     { id: "timelog",     label: t("tab.timelog"),    icon: "TL" },
     { id: "activity",    label: t("tab.activity"),   icon: "AC" },
     { id: "summary",     label: t("tab.summary"),    icon: "SU" },
+    { id: "mytasks",     label: "My Tasks",          icon: "ME" },
+    ...(isAdmin ? [{ id: "users", label: "Users", icon: "US" }] : []),
   ];
 
   const activeProject = data.projects.find(p => p.id === activeProjectId) ?? data.projects[0];
@@ -124,6 +132,38 @@ export function Dashboard({
                   Due {new Date(activeProject.deadline).toLocaleDateString("en-US", { month:"short", day:"numeric" })}
                 </span>
               )}
+              {/* Close project (manager+) */}
+              {isManager && activeProject && activeProject.status !== "closed" && (
+                <button
+                  onClick={async () => {
+                    if (!confirm("Close this project?")) return;
+                    await fetch(`/api/projects/${activeProject.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status: "closed" }),
+                    });
+                    onRefresh();
+                  }}
+                  className="hidden sm:block px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                  style={{ background: "#fef9c3", color: "#a16207" }}
+                >
+                  Close
+                </button>
+              )}
+              {/* Delete project (admin only) */}
+              {isAdmin && activeProject && (
+                <button
+                  onClick={async () => {
+                    if (!confirm("Delete this project and ALL its data? This cannot be undone.")) return;
+                    await fetch(`/api/projects/${activeProject.id}`, { method: "DELETE" });
+                    onRefresh();
+                  }}
+                  className="hidden sm:block px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                  style={{ background: "#fef2f2", color: "#dc2626" }}
+                >
+                  Delete
+                </button>
+              )}
               {/* Risk badge */}
               {(analyticsData?.risks?.length ?? 0) > 0 && (
                 <button
@@ -141,7 +181,7 @@ export function Dashboard({
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={() => setShowCreateTask(true)}
-              className="px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-xl text-white"
+              className={`px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-xl text-white${!isManager ? " hidden" : ""}`}
               style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
             >
               <span className="sm:hidden">+ Task</span>
@@ -155,6 +195,25 @@ export function Dashboard({
               {t("header.newProject")}
             </button>
             {languageToggle}
+            {/* User chip + logout */}
+            {currentUser && (
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-50 border" style={{ borderColor: "#e8eaf0" }}>
+                  <div className="w-5 h-5 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                    style={{ background: currentUser.avatar_color || "#6c5ce7" }}>
+                    {currentUser.name[0]}
+                  </div>
+                  <span className="text-xs font-medium text-gray-700 hidden sm:inline max-w-[80px] truncate">
+                    {currentUser.name.split(" ")[0]}
+                  </span>
+                </div>
+                <button onClick={onLogout}
+                  className="px-2 py-1.5 rounded-xl bg-gray-50 border text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors"
+                  style={{ borderColor: "#e8eaf0" }}>
+                  Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -263,6 +322,15 @@ export function Dashboard({
                 projectId={activeProjectId ?? ""}
                 projectName={activeProject?.name ?? ""}
               />
+            )}
+            {activeTab === "mytasks" && (
+              <MyTasksTab
+                tasks={data.tasks}
+                onTaskClick={setSelectedTask}
+              />
+            )}
+            {activeTab === "users" && isAdmin && (
+              <UserManagementTab />
             )}
             {activeTab === "summary" && (
               <SummaryTab />
