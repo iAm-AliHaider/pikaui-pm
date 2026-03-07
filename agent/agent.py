@@ -55,9 +55,11 @@ async def _send_ui(component: str, props: dict):
 async def _send_event(event_type: str, data: dict = {}):
     """Send a dashboard navigation/refresh event to the frontend."""
     if not _room_ref or not _room_ref.local_participant:
+        logger.warning(f"_send_event skipped (no room): {event_type}")
         return
     payload = json.dumps({"type": event_type, **data}).encode("utf-8")
     await _room_ref.local_participant.publish_data(payload, topic="ui_sync", reliable=True)
+    logger.info(f"Event sent: {event_type}")
 
 def _row(r):
     """Serialize asyncpg row to plain dict."""
@@ -214,10 +216,13 @@ async def create_task(
                             "created", "task", title)
     # Switch to the project + board so user sees the new task immediately
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)   # let frontend apply switch_project before data refresh
     await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.15)   # let frontend reload data before switching tab
     await _send_event("switch_tab", {"tab": "board"})
+    await asyncio.sleep(0.1)
     await _send_ui("TaskCard", {"task": task})
-    return f"Created '{title}'{f' → {assignee_display}' if assignee_display else ''}. Check the board."
+    return f"Created '{title}'" + (f" for {assignee_display}" if assignee_display else "") + ". Board is now open."
 
 
 @function_tool()
@@ -243,9 +248,10 @@ async def update_task_status(context: RunContext, task_title: str, new_status: s
         await _log_activity(_lconn, None, None, "PlanBot",
                             "status_changed", "task", row["title"], {"to": new_status})
     await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.2)
     await _send_event("switch_tab", {"tab": "board"})
     await _send_ui("StatusBanner", {"message": f"'{row['title']}' moved to {label}", "type": "success"})
-    return f"Moved to {label}. Board updated."
+    return f"Moved to {label}. Board is now open."
 
 
 @function_tool()
@@ -296,6 +302,7 @@ async def set_task_progress(context: RunContext, task_title: str, progress_pct: 
     if not row:
         return f"Task '{task_title}' not found."
     await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.2)
     await _send_event("switch_tab", {"tab": "board"})
     await _send_ui("StatusBanner", {
         "message": f"'{row['title']}' is now {pct}% complete",
@@ -791,7 +798,9 @@ async def add_milestone(context: RunContext, name: str, project_name: str = "", 
             VALUES ($1, $2, $3::date)
         """, proj["id"], name, due_date or None)
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)
     await _send_event("refresh", {"section": "analytics"})
+    await asyncio.sleep(0.2)
     await _send_event("switch_tab", {"tab": "milestones"})
     await _send_ui("StatusBanner", {"message": f"Milestone '{name}' added to {proj['name']}", "type": "success"})
     return f"Milestone '{name}' added to {proj['name']}."

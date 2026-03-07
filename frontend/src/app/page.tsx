@@ -24,7 +24,7 @@ export default function Home() {
   const [voiceWidgets, setVoiceWidgets] = useState<{ id: string; component: string; props: Record<string, unknown> }[]>([]);
   const [roomName] = useState(() => `pikAui-pm-${Date.now()}`);
 
-  // Refs so callbacks always close over latest values
+  // Refs so callbacks always close over latest values (avoids stale closures)
   const refreshRef          = useRef<() => void>(() => {});
   const refreshAnalyticsRef = useRef<() => void>(() => {});
   const activeProjectIdRef  = useRef<string | null>(null);
@@ -33,7 +33,8 @@ export default function Home() {
   // ── Fetch dashboard data ──────────────────────────
   const fetchData = useCallback(async (forceProjectId?: string) => {
     try {
-      const res = await fetch("/api/data");
+      // cache: no-store ensures we always get fresh data after mutations
+      const res = await fetch(`/api/data?_t=${Date.now()}`, { cache: "no-store" });
       if (res.ok) {
         const d = await res.json();
         setData(d);
@@ -52,8 +53,8 @@ export default function Home() {
     setAnalyticsLoading(true);
     try {
       const pid = projectId ?? activeProjectIdRef.current;
-      const url = pid ? `/api/analytics?projectId=${pid}` : "/api/analytics";
-      const res = await fetch(url);
+      const url = pid ? `/api/analytics?projectId=${pid}&_t=${Date.now()}` : `/api/analytics?_t=${Date.now()}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (res.ok) setAnalyticsData(await res.json());
     } catch (e) { console.error("Analytics fetch:", e); }
     finally { setAnalyticsLoading(false); }
@@ -93,20 +94,21 @@ export default function Home() {
   }, [roomName, locale]);
 
   // ── Voice event handler ───────────────────────────
+  // Uses functional setActiveProjectId so it never reads stale state.
   const handleVoiceEvent = useCallback((event: { type: string; [k: string]: unknown }) => {
     if (event.type === "tambo_render") {
       const { component, props } = event as { type: string; component: string; props: Record<string, unknown> };
       setVoiceWidgets(w => [...w, { id: `w-${Date.now()}-${Math.random()}`, component, props }]);
 
     } else if (event.type === "switch_tab") {
-      handleSetActiveTab(event.tab as string);
+      setActiveTab(event.tab as string); // direct set — no analytics-trigger here (keep it simple)
 
     } else if (event.type === "switch_project") {
       const pid = (event.projectId as string)?.trim();
       if (pid) {
         setActiveProjectId(pid);
-        // Always re-fetch data when voice switches project so Board/Overview are up-to-date
-        setTimeout(() => fetchData(pid), 100);
+        // Give React one tick to commit the state, then fetch fresh data with this project
+        setTimeout(() => fetchData(pid), 150);
       }
 
     } else if (event.type === "refresh") {
@@ -114,11 +116,19 @@ export default function Home() {
       if (section === "analytics") {
         setTimeout(() => refreshAnalyticsRef.current(), 400);
       } else {
-        // "data" section or fallback — re-fetch main dashboard data
-        setTimeout(() => refreshRef.current(), 200);
+        // Re-fetch all data; use the latest activeProjectId from ref (not stale closure)
+        setTimeout(async () => {
+          const res = await fetch(`/api/data?_t=${Date.now()}`, { cache: "no-store" });
+          if (res.ok) {
+            const d = await res.json();
+            setData(d);
+            // Keep whichever project is currently active (set by switch_project)
+            setActiveProjectId(prev => prev ?? (d.projects?.[0]?.id ?? null));
+          }
+        }, 350);
       }
     }
-  }, [handleSetActiveTab, fetchData]);
+  }, [fetchData]); // minimal deps — handleSetActiveTab removed to prevent listener churn
 
   if (isLoading) {
     return (
