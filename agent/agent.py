@@ -225,10 +225,10 @@ async def create_task(
         row = await conn.fetchrow("""
             INSERT INTO tasks (project_id, title, priority, assignee_id, hours_estimated,
                                due_date, start_date, progress_pct)
-            VALUES ($1,$2,$3,$4,$5,$6::date,CURRENT_DATE,0)
+            VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE,0)
             RETURNING id, title, status, priority, hours_estimated, hours_worked, progress_pct
         """, proj["id"], title, priority, assignee_id, hours_estimated or 0,
-            due_date if due_date else None)
+            _parse_date(due_date))
 
     task = _row(row)
     task["assignee"] = assignee_display
@@ -342,12 +342,12 @@ async def set_task_dates(context: RunContext, task_title: str, start_date: str =
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             UPDATE tasks
-            SET start_date = COALESCE($1::date, start_date),
-                due_date   = COALESCE($2::date, due_date),
+            SET start_date = COALESCE($1, start_date),
+                due_date   = COALESCE($2, due_date),
                 updated_at = NOW()
             WHERE title ILIKE $3
             RETURNING title, start_date, due_date
-        """, start_date or None, due_date or None, f"%{task_title}%")
+        """, _parse_date(start_date), _parse_date(due_date), f"%{task_title}%")
     if not row:
         return f"Task '{task_title}' not found."
     parts = []
@@ -536,8 +536,8 @@ async def create_sprint(context: RunContext, name: str, project_name: str = "",
             return "No active project."
         await conn.fetchrow("""
             INSERT INTO sprints (project_id, name, start_date, end_date, status)
-            VALUES ($1,$2,$3::date,$4::date,'planned')
-        """, proj["id"], name, start_date or None, end_date or None)
+            VALUES ($1,$2,$3,$4,'planned')
+        """, proj["id"], name, _parse_date(start_date), _parse_date(end_date))
     await _send_event("refresh", {"section": "data"})
     await _send_ui("StatusBanner", {"message": f"Sprint '{name}' created for {proj['name']}", "type": "success"})
     return f"Sprint '{name}' created."
@@ -816,8 +816,8 @@ async def add_milestone(context: RunContext, name: str, project_name: str = "", 
             return "No project found."
         await conn.execute("""
             INSERT INTO milestones (project_id, name, due_date)
-            VALUES ($1, $2, $3::date)
-        """, proj["id"], name, due_date or None)
+            VALUES ($1, $2, $3)
+        """, proj["id"], name, _parse_date(due_date))
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
     await asyncio.sleep(0.15)
     await _send_event("refresh", {"section": "analytics"})
