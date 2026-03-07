@@ -1,0 +1,7 @@
+{
+  "env": {
+    "LIVEKIT_API_KEY": "APIuZr5fSExnTri",
+    "LIVEKIT_API_SECRET": "EmUeNSMTSckIHgenCU1RNt5QeJ8FrNAFWuAhHBgyjboA",
+    "NEXT_PUBLIC_LIVEKIT_URL": "wss://agent-ls5zwwm3.livekit.cloud"
+  }
+}
