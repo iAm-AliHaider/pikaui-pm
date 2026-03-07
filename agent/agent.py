@@ -98,6 +98,18 @@ def _row(r):
     return {k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v
             for k, v in d.items()}
 
+
+def _parse_date(s):
+    """Parse a YYYY-MM-DD string to datetime.date. Returns None if empty/invalid."""
+    if not s:
+        return None
+    try:
+        from datetime import date
+        parts = s.strip().split("-")
+        return date(int(parts[0]), int(parts[1]), int(parts[2]))
+    except Exception:
+        return None
+
 # ═══════════════════════════════════════════════════════
 #  TOOLS
 # ═══════════════════════════════════════════════════════
