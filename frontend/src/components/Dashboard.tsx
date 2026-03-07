@@ -34,6 +34,8 @@ const TABS = [
   { id: "analytics",   label: "Analytics",   icon: "📊" },
   { id: "milestones",  label: "Milestones",  icon: "🏁" },
   { id: "timelog",     label: "Time Log",    icon: "⏱" },
+  { id: "activity",   label: "Activity",    icon: "⚡" },
+  { id: "summary",    label: "Summary",     icon: "🏢" },
 ];
 
 interface DashboardProps {
