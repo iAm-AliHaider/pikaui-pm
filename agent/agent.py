@@ -212,9 +212,12 @@ async def create_task(
     async with (await get_pool()).acquire() as _lconn:
         await _log_activity(_lconn, proj["id"], None, assignee_display or "PlanBot",
                             "created", "task", title)
-    await _send_event("refresh", {"section": "tasks"})
+    # Switch to the project + board so user sees the new task immediately
+    await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await _send_event("refresh", {"section": "data"})
+    await _send_event("switch_tab", {"tab": "board"})
     await _send_ui("TaskCard", {"task": task})
-    return f"Created '{title}'{f' → {assignee_display}' if assignee_display else ''}."
+    return f"Created '{title}'{f' → {assignee_display}' if assignee_display else ''}. Check the board."
 
 
 @function_tool()
@@ -239,9 +242,10 @@ async def update_task_status(context: RunContext, task_title: str, new_status: s
     async with (await get_pool()).acquire() as _lconn:
         await _log_activity(_lconn, None, None, "PlanBot",
                             "status_changed", "task", row["title"], {"to": new_status})
-    await _send_event("refresh", {"section": "tasks"})
-    await _send_ui("StatusBanner", {"message": f"'{row['title']}' → {label}", "type": "success"})
-    return f"Moved to {label}."
+    await _send_event("refresh", {"section": "data"})
+    await _send_event("switch_tab", {"tab": "board"})
+    await _send_ui("StatusBanner", {"message": f"'{row['title']}' moved to {label}", "type": "success"})
+    return f"Moved to {label}. Board updated."
 
 
 @function_tool()
@@ -265,7 +269,7 @@ async def log_hours(context: RunContext, task_title: str, hours: float):
     async with (await get_pool()).acquire() as _lconn:
         await _log_activity(_lconn, None, None, "PlanBot",
                             "hours_logged", "timelog", row["title"], {"hours": hours})
-    await _send_event("refresh", {"section": "tasks"})
+    await _send_event("refresh", {"section": "data"})
     await _send_ui("StatusBanner", {
         "message": f"+{hours}h logged on '{row['title']}' — {row['hours_worked']}h total ({row['progress_pct']}% done)",
         "type": "success",
@@ -291,7 +295,8 @@ async def set_task_progress(context: RunContext, task_title: str, progress_pct: 
         """, pct, f"%{task_title}%")
     if not row:
         return f"Task '{task_title}' not found."
-    await _send_event("refresh", {"section": "tasks"})
+    await _send_event("refresh", {"section": "data"})
+    await _send_event("switch_tab", {"tab": "board"})
     await _send_ui("StatusBanner", {
         "message": f"'{row['title']}' is now {pct}% complete",
         "type": "success",
@@ -317,7 +322,12 @@ async def set_task_dates(context: RunContext, task_title: str, start_date: str =
         """, start_date or None, due_date or None, f"%{task_title}%")
     if not row:
         return f"Task '{task_title}' not found."
-    await _send_event("refresh", {"section": "tasks"})
+    parts = []
+    if row["start_date"]: parts.append(f"starts {str(row['start_date'])[:10]}")
+    if row["due_date"]:   parts.append(f"due {str(row['due_date'])[:10]}")
+    msg = f"'{row['title']}' — {', '.join(parts)}" if parts else f"Dates updated on '{row['title']}'"
+    await _send_event("refresh", {"section": "data"})
+    await _send_ui("StatusBanner", {"message": msg, "type": "success"})
     return f"Dates set on '{row['title']}'."
 
 
@@ -500,6 +510,7 @@ async def create_sprint(context: RunContext, name: str, project_name: str = "",
             INSERT INTO sprints (project_id, name, start_date, end_date, status)
             VALUES ($1,$2,$3::date,$4::date,'planned')
         """, proj["id"], name, start_date or None, end_date or None)
+    await _send_event("refresh", {"section": "data"})
     await _send_ui("StatusBanner", {"message": f"Sprint '{name}' created for {proj['name']}", "type": "success"})
     return f"Sprint '{name}' created."
 
@@ -779,8 +790,10 @@ async def add_milestone(context: RunContext, name: str, project_name: str = "", 
             INSERT INTO milestones (project_id, name, due_date)
             VALUES ($1, $2, $3::date)
         """, proj["id"], name, due_date or None)
+    await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await _send_event("refresh", {"section": "analytics"})
+    await _send_event("switch_tab", {"tab": "milestones"})
     await _send_ui("StatusBanner", {"message": f"Milestone '{name}' added to {proj['name']}", "type": "success"})
-    await _send_event("refresh", {"section": "milestones"})
     return f"Milestone '{name}' added to {proj['name']}."
 
 
@@ -1115,6 +1128,7 @@ async def add_dependency(context: RunContext, task_title: str, depends_on_title:
             INSERT INTO task_dependencies (task_id, depends_on_id)
             VALUES ($1, $2) ON CONFLICT DO NOTHING
         """, task["id"], dep["id"])
+    await _send_event("refresh", {"section": "data"})
     await _send_ui("StatusBanner", {
         "message": f"\'{task['title']}\' now depends on \'{dep['title']}\'",
         "type": "info"
