@@ -71,8 +71,10 @@ export function Dashboard({
   ];
 
   const activeProject = data.projects.find(p => p.id === activeProjectId) ?? data.projects[0];
-  const projectTasks  = data.tasks.filter(t => t.project_id === activeProjectId);
-  const projectDocs   = data.documents.filter(d => d.project_id === activeProjectId);
+  // Use the resolved project id (with fallback) so filters never return empty due to null activeProjectId
+  const resolvedProjectId = activeProject?.id ?? null;
+  const projectTasks  = data.tasks.filter(t => t.project_id === resolvedProjectId);
+  const projectDocs   = data.documents.filter(d => d.project_id === resolvedProjectId);
 
   const completionPct = activeProject
     ? Math.round((Number(activeProject.done_tasks) / Math.max(Number(activeProject.total_tasks), 1)) * 100)
