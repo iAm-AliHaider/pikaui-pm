@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { PikAuiProvider }  from "@/components/PikAuiProvider";
 import { VoiceSidebar }    from "@/components/VoiceSidebar";
 import { Dashboard }       from "@/components/Dashboard";
+import { LanguageToggle, useLocale } from "@/components/LocaleContext";
 import { fetchToken }      from "@/lib/livekit-config";
 import { DashboardData, Task, AnalyticsData } from "@/lib/types";
 import { motion } from "framer-motion";
@@ -11,6 +12,7 @@ import { motion } from "framer-motion";
 const ANALYTICS_TABS = new Set(["analytics", "milestones", "timelog", "summary"]);
 
 export default function Home() {
+  const { locale, t }               = useLocale();
   const [token, setToken]           = useState("");
   const [isLoading, setIsLoading]   = useState(true);
   const [data, setData]             = useState<DashboardData | null>(null);
@@ -73,17 +75,20 @@ export default function Home() {
     }
   }, [activeProjectId]);
 
-  // ── Token ─────────────────────────────────────────
+  // ── Token — re-fetch whenever locale changes ──────
   useEffect(() => {
+    let cancelled = false;
     async function getToken() {
+      setIsLoading(true);
       try {
-        const { token: t } = await fetchToken(roomName, `user-${Date.now()}`);
-        setToken(t);
+        const { token: t } = await fetchToken(roomName, `user-${Date.now()}`, locale);
+        if (!cancelled) setToken(t);
       } catch { console.error("Token error"); }
-      finally { setIsLoading(false); }
+      finally { if (!cancelled) setIsLoading(false); }
     }
     getToken();
-  }, [roomName]);
+    return () => { cancelled = true; };
+  }, [roomName, locale]);
 
   // ── Voice event handler ───────────────────────────
   const handleVoiceEvent = useCallback((event: { type: string; [k: string]: unknown }) => {
@@ -91,8 +96,7 @@ export default function Home() {
       const { component, props } = event as { type: string; component: string; props: Record<string, unknown> };
       setVoiceWidgets(w => [...w, { id: `w-${Date.now()}-${Math.random()}`, component, props }]);
     } else if (event.type === "switch_tab") {
-      const tab = event.tab as string;
-      handleSetActiveTab(tab);
+      handleSetActiveTab(event.tab as string);
     } else if (event.type === "switch_project") {
       const pid = event.projectId as string;
       if (pid) setActiveProjectId(pid);
@@ -114,7 +118,7 @@ export default function Home() {
             <div className="absolute inset-0 rounded-full border-4 border-purple-100" />
             <div className="absolute inset-0 rounded-full border-4 border-purple-600 border-t-transparent animate-spin" />
           </div>
-          <p className="text-sm text-gray-400 tracking-widest uppercase font-medium">Loading PlanBot</p>
+          <p className="text-sm text-gray-400 tracking-widest uppercase font-medium">{t("app.loading")}</p>
         </motion.div>
       </div>
     );
@@ -144,12 +148,13 @@ export default function Home() {
               setSelectedTask={setSelectedTask}
               onRefresh={fetchData}
               onRefreshAnalytics={() => fetchAnalytics()}
+              languageToggle={<LanguageToggle />}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm text-gray-400">Loading project data…</p>
+                <p className="text-sm text-gray-400">{t("app.noData")}</p>
               </div>
             </div>
           )}

@@ -4,7 +4,7 @@ import { AccessToken, RoomServiceClient, AgentDispatchClient } from "livekit-ser
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { roomName, participantName } = body;
+    const { roomName, participantName, lang = "en" } = body;
 
     if (!roomName || !participantName) {
       return NextResponse.json(
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.LIVEKIT_API_KEY!;
+    const apiKey    = process.env.LIVEKIT_API_KEY!;
     const apiSecret = process.env.LIVEKIT_API_SECRET!;
     const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL!;
 
@@ -21,12 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
     }
 
-    // Create token with room join + agent dispatch permissions
+    // Create participant token
     const at = new AccessToken(apiKey, apiSecret, {
       identity: participantName,
       name: participantName,
     });
-
     at.addGrant({
       room: roomName,
       roomJoin: true,
@@ -34,25 +33,24 @@ export async function POST(request: NextRequest) {
       canSubscribe: true,
       canPublishData: true,
     });
-
     const token = await at.toJwt();
 
-    // Create the room first via RoomService
     const httpUrl = livekitUrl.replace("wss://", "https://");
     const roomService = new RoomServiceClient(httpUrl, apiKey, apiSecret);
 
+    // Create room
     try {
       await roomService.createRoom({ name: roomName, emptyTimeout: 300, maxParticipants: 5 });
     } catch (e) {
-      // Room may already exist, that's fine
       console.log("Room create:", e instanceof Error ? e.message : "ok");
     }
 
-    // Dispatch the pikaui-pm agent to this room
+    // Dispatch agent with language metadata
     try {
       const agentDispatch = new AgentDispatchClient(httpUrl, apiKey, apiSecret);
-      await agentDispatch.createDispatch(roomName, "pikaui-pm");
-      console.log("Agent dispatched to room:", roomName);
+      const metadata = JSON.stringify({ lang: lang === "de" ? "de" : "en" });
+      await agentDispatch.createDispatch(roomName, "pikaui-pm", { metadata });
+      console.log(`Agent dispatched to ${roomName} with lang=${lang}`);
     } catch (e) {
       console.error("Agent dispatch failed:", e instanceof Error ? e.message : e);
     }

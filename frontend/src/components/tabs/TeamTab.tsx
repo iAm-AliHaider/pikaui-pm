@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { TeamMember, Task } from "@/lib/types";
+import { useLocale } from "../LocaleContext";
 
 const AVATAR_GRADS = [
   "linear-gradient(135deg,#6c5ce7,#0984e3)",
@@ -16,6 +17,7 @@ export function TeamTab({ team, tasks, onTaskClick }: {
   tasks: Task[];
   onTaskClick: (t: Task) => void;
 }) {
+  const { t } = useLocale();
   const maxTasks = Math.max(...team.map(m => Number(m.total_tasks)), 1);
 
   return (
@@ -23,11 +25,11 @@ export function TeamTab({ team, tasks, onTaskClick }: {
       {/* Stats bar */}
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
         {[
-          { label: "Members", value: team.length },
-          { label: "Total Tasks", value: tasks.length },
-          { label: "In Progress", value: tasks.filter(t => t.status === "in_progress").length },
-          { label: "Completed", value: tasks.filter(t => t.status === "done").length },
-          { label: "Hours Logged", value: `${team.reduce((a, m) => a + Number(m.hours_worked), 0).toFixed(0)}h` },
+          { label: t("team.member") + "s", value: team.length },
+          { label: t("team.tasks"), value: tasks.length },
+          { label: t("status.in_progress"), value: tasks.filter(t => t.status === "in_progress").length },
+          { label: t("status.done"), value: tasks.filter(t => t.status === "done").length },
+          { label: t("team.hours"), value: `${team.reduce((a, m) => a + Number(m.hours_worked), 0).toFixed(0)}h` },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border p-4 text-center shadow-sm" style={{ borderColor:"#e8eaf0" }}>
             <p className="text-xl font-bold text-gray-900">{s.value}</p>
@@ -70,7 +72,7 @@ export function TeamTab({ team, tasks, onTaskClick }: {
                     <p className="text-xl font-bold" style={{ background: AVATAR_GRADS[i % AVATAR_GRADS.length], WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                       {donePct}%
                     </p>
-                    <p className="text-[10px] text-gray-400">done</p>
+                    <p className="text-[10px] text-gray-400">{t("status.done")}</p>
                   </div>
                 </div>
               </div>
@@ -84,10 +86,10 @@ export function TeamTab({ team, tasks, onTaskClick }: {
                   <div style={{ width:`${(todo/maxTasks)*100}%`, background:"#e5e7eb" }} />
                 </div>
                 <div className="flex gap-4 text-[10px] mb-4">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-200 inline-block"/>{todo} todo</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>{inP} active</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/>{done} done</span>
-                  <span className="ml-auto text-gray-400">⏱ {Number(member.hours_worked).toFixed(0)}h</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-200 inline-block"/>{todo} {t("status.todo")}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>{inP} {t("status.in_progress")}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/>{done} {t("status.done")}</span>
+                  <span className="ml-auto text-gray-400"> {Number(member.hours_worked).toFixed(0)}h</span>
                 </div>
 
                 {/* Task list */}
@@ -103,7 +105,7 @@ export function TeamTab({ team, tasks, onTaskClick }: {
                     </button>
                   ))}
                   {memberTasks.length > 4 && (
-                    <p className="text-[10px] text-gray-400 pl-2.5">+{memberTasks.length - 4} more tasks</p>
+                    <p className="text-[10px] text-gray-400 pl-2.5">+{memberTasks.length - 4} {t("team.tasks")}</p>
                   )}
                 </div>
               </div>

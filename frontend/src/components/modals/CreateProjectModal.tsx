@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { TeamMember } from "@/lib/types";
+import { useLocale } from "../LocaleContext";
 
 interface CreateProjectModalProps {
   team: TeamMember[];
@@ -26,6 +27,7 @@ export function CreateProjectModal({
   onClose,
   onCreated,
 }: CreateProjectModalProps) {
+  const { t } = useLocale();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
@@ -44,7 +46,7 @@ export function CreateProjectModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Project name is required");
+      setError(t("createProject.required"));
       return;
     }
 
@@ -99,7 +101,7 @@ export function CreateProjectModal({
         style={{ borderColor: "#e8eaf0" }}
       >
         <div className="sticky top-0 bg-white rounded-t-2xl border-b z-10 px-6 py-4 flex items-center justify-between" style={{ borderColor: "#e8eaf0" }}>
-          <h2 className="text-lg font-bold text-gray-900">Create New Project</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t("createProject.title")}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             ✕
           </button>
@@ -113,24 +115,24 @@ export function CreateProjectModal({
           )}
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Project Name *</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.name")} *</label>
             <input
               ref={nameRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter project name"
+              placeholder={t("createProject.placeholder")}
               className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Description</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.desc")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add description..."
+              placeholder={t("createProject.desc")}
               rows={2}
               className="w-full px-3 py-2 text-sm rounded-xl border resize-none focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
@@ -138,21 +140,21 @@ export function CreateProjectModal({
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Status</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.status")}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
             >
-              <option value="active">Active</option>
-              <option value="on_hold">On Hold</option>
-              <option value="completed">Completed</option>
+              <option value="active">{t("project.active")}</option>
+              <option value="on_hold">{t("project.on_hold")}</option>
+              <option value="completed">{t("project.completed")}</option>
             </select>
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Color</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.color")}</label>
             <div className="flex gap-2 flex-wrap">
               {COLORS.map((c) => (
                 <button
@@ -169,14 +171,14 @@ export function CreateProjectModal({
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Manager</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.manager")}</label>
             <select
               value={managerName}
               onChange={(e) => setManagerName(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
             >
-              <option value="">None</option>
+              <option value="">{t("createProject.none")}</option>
               {team.map((m) => (
                 <option key={m.id} value={m.name}>
                   {m.name}
@@ -187,7 +189,7 @@ export function CreateProjectModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Budget</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.budget")}</label>
               <input
                 type="number"
                 min="0"
@@ -200,7 +202,7 @@ export function CreateProjectModal({
             </div>
 
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Deadline</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createProject.deadline")}</label>
               <input
                 type="date"
                 value={deadline}
@@ -217,7 +219,7 @@ export function CreateProjectModal({
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
-              Cancel
+              {t("createProject.cancel")}
             </button>
             <button
               type="submit"
@@ -225,7 +227,7 @@ export function CreateProjectModal({
               className="px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
             >
-              {saving ? "Saving..." : "Save Project"}
+              {saving ? t("createProject.saving") : t("createProject.save")}
             </button>
           </div>
         </form>

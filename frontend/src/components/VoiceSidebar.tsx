@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { VoiceAgent } from "./VoiceAgent";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocale } from "./LocaleContext";
 import dynamic from "next/dynamic";
 
 const StatusBanner = dynamic(() => import("./pikaui/StatusBanner").then(m => ({ default: m.StatusBanner })), { ssr: false });
@@ -21,59 +22,60 @@ const WIDGET_COMPONENTS: Record<string, React.ComponentType<Record<string, unkno
 
 interface Widget { id: string; component: string; props: Record<string, unknown> }
 
-const CMD_GROUPS = [
-  {
-    label: "Projects",
-    color: "#6c5ce7",
-    cmds: [
-      { icon: "📋", label: "All projects",   say: "Show me all projects" },
-      { icon: "📊", label: "Analytics",      say: "Show full analytics" },
-      { icon: "📈", label: "Daily standup",  say: "Daily standup" },
-      { icon: "⚠️", label: "Detect risks",   say: "Detect risks" },
-      { icon: "🏢", label: "Summary",        say: "Cross project summary" },
-    ],
-  },
-  {
-    label: "Board",
-    color: "#0984e3",
-    cmds: [
-      { icon: "▦",  label: "Show board",     say: "Show the board" },
-      { icon: "✅", label: "Done tasks",     say: "Search done tasks" },
-      { icon: "🔴", label: "High priority",  say: "Search high priority tasks" },
-      { icon: "➕", label: "New task",       say: "Create a new high priority task" },
-      { icon: "🔍", label: "Search",         say: "Search in progress tasks" },
-    ],
-  },
-  {
-    label: "Team",
-    color: "#00b894",
-    cmds: [
-      { icon: "👥", label: "Workload",       say: "Show team workload" },
-      { icon: "💡", label: "Suggest assign", say: "Suggest who to assign the next task to" },
-      { icon: "⏱",  label: "Log 2h",         say: "Log 2 hours on the current task" },
-      { icon: "🕐", label: "Activity",       say: "Show recent activity" },
-      { icon: "🏆", label: "Top performer",  say: "Who has the most completed tasks" },
-    ],
-  },
-  {
-    label: "Insights",
-    color: "#fd79a8",
-    cmds: [
-      { icon: "🏁", label: "Milestones",     say: "Show milestones" },
-      { icon: "💰", label: "Budget",         say: "Show analytics" },
-      { icon: "📄", label: "Search docs",    say: "Search docs for deployment guide" },
-      { icon: "🗓", label: "Sprint status",  say: "Show sprint analytics" },
-      { icon: "🚀", label: "New sprint",     say: "Create sprint" },
-    ],
-  },
-];
-
 export function VoiceSidebar({ voiceWidgets, onClearWidgets }: {
   voiceWidgets: Widget[];
   onClearWidgets: () => void;
 }) {
+  const { t } = useLocale();
   const [activeGroup, setActiveGroup] = useState(0);
   const [highlighted, setHighlighted] = useState<string | null>(null);
+
+  const CMD_GROUPS = [
+    {
+      label: t("voice.projects"),
+      color: "#6c5ce7",
+      cmds: [
+        { icon: "📋", label: "All projects",   say: "Show me all projects" },
+        { icon: "📊", label: "Analytics",      say: "Show full analytics" },
+        { icon: "📈", label: "Daily standup",  say: "Daily standup" },
+        { icon: "⚠️", label: "Detect risks",   say: "Detect risks" },
+        { icon: "🏢", label: "Summary",        say: "Cross project summary" },
+      ],
+    },
+    {
+      label: t("voice.boardCmds"),
+      color: "#0984e3",
+      cmds: [
+        { icon: "▦",  label: "Show board",     say: "Show the board" },
+        { icon: "✅", label: "Done tasks",     say: "Search done tasks" },
+        { icon: "🔴", label: "High priority",  say: "Search high priority tasks" },
+        { icon: "➕", label: "New task",       say: "Create a new high priority task" },
+        { icon: "🔍", label: "Search",         say: "Search in progress tasks" },
+      ],
+    },
+    {
+      label: t("voice.teamCmds"),
+      color: "#00b894",
+      cmds: [
+        { icon: "👥", label: "Workload",       say: "Show team workload" },
+        { icon: "💡", label: "Suggest assign", say: "Suggest who to assign the next task to" },
+        { icon: "⏱",  label: "Log 2h",         say: "Log 2 hours on the current task" },
+        { icon: "🕐", label: "Activity",       say: "Show recent activity" },
+        { icon: "🏆", label: "Top performer",  say: "Who has the most completed tasks" },
+      ],
+    },
+    {
+      label: t("voice.insights"),
+      color: "#fd79a8",
+      cmds: [
+        { icon: "🏁", label: "Milestones",     say: "Show milestones" },
+        { icon: "💰", label: "Budget",         say: "Show analytics" },
+        { icon: "📄", label: "Search docs",    say: "Search docs for deployment guide" },
+        { icon: "🗓", label: "Sprint status",  say: "Show sprint analytics" },
+        { icon: "🚀", label: "New sprint",     say: "Create sprint" },
+      ],
+    },
+  ];
 
   const handleCmdClick = (say: string) => {
     setHighlighted(say);
@@ -92,7 +94,7 @@ export function VoiceSidebar({ voiceWidgets, onClearWidgets }: {
           </svg>
         </div>
         <div>
-          <p className="text-sm font-bold text-gray-900">PlanBot</p>
+          <p className="text-sm font-bold text-gray-900">{t("voice.title")}</p>
           <p className="text-[10px] text-gray-400">Voice Project Manager</p>
         </div>
       </div>
@@ -113,7 +115,7 @@ export function VoiceSidebar({ voiceWidgets, onClearWidgets }: {
             style={{ borderColor: "#f3f4f6" }}
           >
             <div className="px-4 py-2 text-center">
-              <p className="text-[9px] uppercase tracking-wider text-purple-500 font-semibold mb-0.5">Say this now</p>
+              <p className="text-[9px] uppercase tracking-wider text-purple-500 font-semibold mb-0.5">{t("voice.sayNow")}</p>
               <p className="text-xs font-medium text-gray-800">&ldquo;{highlighted}&rdquo;</p>
             </div>
           </motion.div>
@@ -156,7 +158,7 @@ export function VoiceSidebar({ voiceWidgets, onClearWidgets }: {
           <div className="px-3 py-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Voice Output</p>
-              <button onClick={onClearWidgets} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors">Clear</button>
+              <button onClick={onClearWidgets} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors">{t("voice.clearWidgets")}</button>
             </div>
             <AnimatePresence>
               {voiceWidgets.slice(-6).map((w) => {
@@ -181,7 +183,7 @@ export function VoiceSidebar({ voiceWidgets, onClearWidgets }: {
         {voiceWidgets.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full pb-8 text-center px-4">
             <p className="text-2xl mb-2">🎙️</p>
-            <p className="text-xs text-gray-400">Click a command above then speak it, or just talk freely.</p>
+            <p className="text-xs text-gray-400">{t("voice.noWidgets")}</p>
           </div>
         )}
       </div>

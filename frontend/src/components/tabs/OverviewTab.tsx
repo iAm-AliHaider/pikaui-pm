@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Project, Task, TeamMember, Sprint } from "@/lib/types";
+import { useLocale } from "../LocaleContext";
 
 const AVATAR_GRADS = [
   "linear-gradient(135deg,#6c5ce7,#0984e3)",
@@ -19,7 +20,8 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCrea
   onTaskClick: (t: Task) => void;
   onCreateTask?: () => void;
 }) {
-  if (!project) return <div className="p-8 text-gray-400 text-sm">No project selected.</div>;
+  const { t } = useLocale();
+  if (!project) return <div className="p-8 text-gray-400 text-sm">{t("app.noProject")}</div>;
 
   const pct = Math.round((Number(project.done_tasks) / Math.max(Number(project.total_tasks), 1)) * 100);
   const inProgress = tasks.filter(t => t.status === "in_progress");
@@ -43,14 +45,14 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCrea
                 {project.status}
               </span>
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed">{project.description || "No description."}</p>
+            <p className="text-sm text-gray-500 leading-relaxed">{project.description || t("overview.noDesc")}</p>
           </div>
         </div>
 
         {/* Progress bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-500">Overall Progress</span>
+            <span className="text-xs font-medium text-gray-500">{t("overview.progress")}</span>
             <span className="text-sm font-bold" style={{ color: project.color }}>{pct}%</span>
           </div>
           <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -85,10 +87,10 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCrea
         <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} transition={{ delay:0.1 }}
           className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor:"#e8eaf0" }}>
           <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500" /> Sprints
+            <span className="w-2 h-2 rounded-full bg-blue-500" /> {t("overview.activeSprint")}
           </h3>
           {sprints.length === 0 ? (
-            <p className="text-xs text-gray-400">No sprints yet.</p>
+            <p className="text-xs text-gray-400">{t("overview.noSprint")}</p>
           ) : (
             <div className="space-y-2">
               {sprints.slice(0,3).map(s => (
@@ -108,7 +110,7 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCrea
         {overdue.length > 0 && (
           <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} transition={{ delay:0.15 }}
             className="bg-red-50 rounded-2xl border border-red-100 p-4">
-            <p className="text-xs font-semibold text-red-600 mb-2">⚠️ {overdue.length} Overdue</p>
+            <p className="text-xs font-semibold text-red-600 mb-2"> {overdue.length} {t("overview.overdueTasks")}</p>
             {overdue.slice(0,3).map(t => (
               <button key={t.id} onClick={() => onTaskClick(t)} className="w-full text-left mb-1.5 text-xs text-red-700 hover:underline truncate block">
                 {t.title}
@@ -120,7 +122,7 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCrea
         {/* Team */}
         <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} transition={{ delay:0.2 }}
           className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor:"#e8eaf0" }}>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Team</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t("overview.team")}</h3>
           <div className="space-y-2.5">
             {team.slice(0,5).map((m,i) => (
               <div key={m.id} className="flex items-center gap-2.5">
@@ -143,19 +145,19 @@ export function OverviewTab({ project, tasks, team, sprints, onTaskClick, onCrea
       <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} transition={{ delay:0.25 }}
         className="lg:col-span-3 bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor:"#e8eaf0" }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-700">In Progress ({inProgress.length})</h3>
+          <h3 className="text-sm font-semibold text-gray-700">{t("overview.inProgress")} ({inProgress.length})</h3>
           {onCreateTask && (
             <button
               onClick={onCreateTask}
               className="text-xs font-medium text-white px-2.5 py-1 rounded-lg"
               style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
             >
-              + Add Task
+              {t("overview.addTask")}
             </button>
           )}
         </div>
         {inProgress.length === 0
-          ? <p className="text-sm text-gray-400">No active tasks.</p>
+          ? <p className="text-sm text-gray-400">{t("overview.noActive")}</p>
           : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {inProgress.map(task => (

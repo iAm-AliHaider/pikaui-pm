@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { LocaleProvider } from "@/components/LocaleContext";
 
 export const metadata: Metadata = {
   title: "pikAui PM — Voice Project Management",
@@ -28,7 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body className="antialiased" style={{ background: "#f8f9fc", color: "#111827" }}>
-        {children}
+        <LocaleProvider>
+          {children}
+        </LocaleProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,

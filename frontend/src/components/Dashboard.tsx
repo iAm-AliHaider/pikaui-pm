@@ -10,6 +10,7 @@ import { DocsTab }        from "./tabs/DocsTab";
 import { TaskModal }      from "./modals/TaskModal";
 import { CreateTaskModal }    from "./modals/CreateTaskModal";
 import { CreateProjectModal } from "./modals/CreateProjectModal";
+import { useLocale, LanguageToggle } from "./LocaleContext";
 import dynamic from "next/dynamic";
 
 // Lazy-load heavy chart tabs
@@ -29,18 +30,6 @@ function TabSkeleton() {
   );
 }
 
-const TABS = [
-  { id: "overview",    label: "Overview",    icon: "◎" },
-  { id: "board",       label: "Board",       icon: "▦" },
-  { id: "team",        label: "Team",        icon: "◈" },
-  { id: "docs",        label: "Documents",   icon: "◻" },
-  { id: "analytics",   label: "Analytics",   icon: "📊" },
-  { id: "milestones",  label: "Milestones",  icon: "🏁" },
-  { id: "timelog",     label: "Time Log",    icon: "⏱" },
-  { id: "activity",   label: "Activity",    icon: "⚡" },
-  { id: "summary",    label: "Summary",     icon: "🏢" },
-];
-
 interface DashboardProps {
   data: DashboardData;
   analyticsData: AnalyticsData | null;
@@ -53,6 +42,7 @@ interface DashboardProps {
   setSelectedTask: (t: Task | null) => void;
   onRefresh: () => void;
   onRefreshAnalytics: () => void;
+  languageToggle?: React.ReactNode;
 }
 
 export function Dashboard({
@@ -61,10 +51,24 @@ export function Dashboard({
   activeProjectId, setActiveProjectId,
   selectedTask, setSelectedTask,
   onRefresh, onRefreshAnalytics,
+  languageToggle,
 }: DashboardProps) {
+  const { t } = useLocale();
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [createTaskStatus, setCreateTaskStatus] = useState("todo");
   const [showCreateProject, setShowCreateProject] = useState(false);
+
+  const TABS = [
+    { id: "overview",    label: t("tab.overview"),    icon: "O" },
+    { id: "board",       label: t("tab.board"),       icon: "B" },
+    { id: "team",        label: t("tab.team"),        icon: "T" },
+    { id: "docs",        label: t("tab.documents"),   icon: "D" },
+    { id: "analytics",   label: t("tab.analytics"),  icon: "A" },
+    { id: "milestones",  label: t("tab.milestones"),  icon: "M" },
+    { id: "timelog",     label: t("tab.timelog"),     icon: "L" },
+    { id: "activity",    label: t("tab.activity"),    icon: "X" },
+    { id: "summary",     label: t("tab.summary"),     icon: "S" },
+  ];
 
   const activeProject = data.projects.find(p => p.id === activeProjectId) ?? data.projects[0];
   const projectTasks  = data.tasks.filter(t => t.project_id === activeProjectId);
@@ -125,7 +129,7 @@ export function Dashboard({
                   className="px-2 py-0.5 rounded-full text-[10px] font-semibold animate-pulse"
                   style={{ background: "#fee2e2", color: "#ef4444" }}
                 >
-                  Risk {analyticsData!.risks.length}
+                  {analyticsData!.risks.length} {(analyticsData!.risks.length === 1 ? t("header.risks") : t("header.risks.plural"))}
                 </button>
               )}
             </div>
@@ -138,15 +142,16 @@ export function Dashboard({
               className="px-3 py-1.5 text-xs font-semibold rounded-xl text-white"
               style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
             >
-              New Task
+              {t("header.newTask")}
             </button>
             <button
               onClick={() => setShowCreateProject(true)}
               className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border"
               style={{ borderColor: "#6c5ce7", color: "#6c5ce7" }}
             >
-              New Project
+              {t("header.newProject")}
             </button>
+            {languageToggle}
           </div>
         </div>
       </header>

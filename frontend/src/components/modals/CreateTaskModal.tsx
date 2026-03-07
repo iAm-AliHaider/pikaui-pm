@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Project, TeamMember } from "@/lib/types";
+import { useLocale } from "../LocaleContext";
 
 interface CreateTaskModalProps {
   projects: Project[];
@@ -21,6 +22,7 @@ export function CreateTaskModal({
   onClose,
   onCreated,
 }: CreateTaskModalProps) {
+  const { t } = useLocale();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState(defaultProjectId || (projects[0]?.id ?? ""));
@@ -40,7 +42,7 @@ export function CreateTaskModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError("Title is required");
+      setError(t("createTask.required"));
       return;
     }
 
@@ -102,7 +104,7 @@ export function CreateTaskModal({
         style={{ borderColor: "#e8eaf0" }}
       >
         <div className="sticky top-0 bg-white rounded-t-2xl border-b z-10 px-6 py-4 flex items-center justify-between" style={{ borderColor: "#e8eaf0" }}>
-          <h2 className="text-lg font-bold text-gray-900">Create New Task</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t("createTask.title")}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             ✕
           </button>
@@ -116,24 +118,24 @@ export function CreateTaskModal({
           )}
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Title *</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.taskTitle")} *</label>
             <input
               ref={titleRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title"
+              placeholder={t("createTask.placeholder")}
               className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Description</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.description")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add description..."
+              placeholder={t("createTask.description")}
               rows={2}
               className="w-full px-3 py-2 text-sm rounded-xl border resize-none focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
@@ -142,7 +144,7 @@ export function CreateTaskModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Project</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.project")}</label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
@@ -158,22 +160,22 @@ export function CreateTaskModal({
             </div>
 
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Status</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.status")}</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300"
                 style={{ borderColor: "#e8eaf0" }}
               >
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
+                <option value="todo">{t("status.todo")}</option>
+                <option value="in_progress">{t("status.in_progress")}</option>
+                <option value="done">{t("status.done")}</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Priority</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.priority")}</label>
             <div className="flex gap-2">
               {(["low", "medium", "high"] as const).map((p) => (
                 <button
@@ -186,21 +188,21 @@ export function CreateTaskModal({
                       : `${priorityColors[p].bg} ${priorityColors[p].text} border-transparent`
                   }`}
                 >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {t(`priority.${p}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Assignee</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.assignee")}</label>
             <select
               value={assigneeName}
               onChange={(e) => setAssigneeName(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300"
               style={{ borderColor: "#e8eaf0" }}
             >
-              <option value="">Unassigned</option>
+              <option value="">{t("createTask.unassigned")}</option>
               {team.map((m) => (
                 <option key={m.id} value={m.name}>
                   {m.name}
@@ -211,7 +213,7 @@ export function CreateTaskModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Due Date</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.dueDate")}</label>
               <input
                 type="date"
                 value={dueDate}
@@ -222,7 +224,7 @@ export function CreateTaskModal({
             </div>
 
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Hours Estimated</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("createTask.hours")}</label>
               <input
                 type="number"
                 step="0.5"
@@ -242,7 +244,7 @@ export function CreateTaskModal({
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
-              Cancel
+              {t("createTask.cancel")}
             </button>
             <button
               type="submit"
@@ -250,7 +252,7 @@ export function CreateTaskModal({
               className="px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
             >
-              {saving ? "Saving..." : "Save Task"}
+              {saving ? t("createTask.saving") : t("createTask.save")}
             </button>
           </div>
         </form>

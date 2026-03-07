@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Task, Project } from "@/lib/types";
-
-const COLS = [
-  { id: "todo",        label: "To Do",       dotColor: "#9ca3af", headerBg: "#f9fafb" },
-  { id: "in_progress", label: "In Progress",  dotColor: "#3b82f6", headerBg: "#eff6ff" },
-  { id: "done",        label: "Done",         dotColor: "#10b981", headerBg: "#f0fdf4" },
-];
+import { useLocale } from "../LocaleContext";
 
 const PRIORITY_STYLE: Record<string, { dot: string; badge: string }> = {
   high:   { dot: "#ef4444", badge: "bg-red-50 text-red-500" },
@@ -24,8 +19,15 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh, onCreateTask,
   onCreateTask: (defaultStatus: string) => void;
   onDeleteTask: (taskId: string) => void;
 }) {
+  const { t } = useLocale();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [droppingCol, setDroppingCol] = useState<string | null>(null);
+
+  const COLS = [
+    { id: "todo",        label: t("board.todo"),       dotColor: "#9ca3af", headerBg: "#f9fafb" },
+    { id: "in_progress", label: t("board.inProgress"),  dotColor: "#3b82f6", headerBg: "#eff6ff" },
+    { id: "done",        label: t("board.done"),        dotColor: "#10b981", headerBg: "#f0fdf4" },
+  ];
 
   const handleDrop = async (colId: string) => {
     if (!draggingId || draggingId === colId) return;
@@ -97,7 +99,7 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh, onCreateTask,
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm("Delete this task?")) {
+                            if (window.confirm(t("board.deleteConfirm"))) {
                               onDeleteTask(task.id);
                             }
                           }}
@@ -110,7 +112,7 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh, onCreateTask,
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${p.badge}`}>
                             {task.priority}
                           </span>
-                          {isOverdue(task) && <span className="text-[10px] text-red-500 font-medium">Overdue</span>}
+                          {isOverdue(task) && <span className="text-[10px] text-red-500 font-medium">{t("board.overdue")}</span>}
                         </div>
 
                         {/* Title */}
@@ -151,7 +153,7 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh, onCreateTask,
 
                 {colTasks.length === 0 && (
                   <div className="h-24 flex items-center justify-center rounded-xl border-2 border-dashed" style={{ borderColor: col.dotColor + "30" }}>
-                    <span className="text-xs text-gray-300">Drop tasks here</span>
+                    <span className="text-xs text-gray-300">{t("board.dropHere")}</span>
                   </div>
                 )}
               </div>

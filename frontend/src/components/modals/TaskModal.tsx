@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Task, TeamMember, Comment } from "@/lib/types";
+import { useLocale } from "../LocaleContext";
 
 export function TaskModal({ task, team, onClose, onSave }: {
   task: Task;
@@ -10,6 +11,7 @@ export function TaskModal({ task, team, onClose, onSave }: {
   onClose: () => void;
   onSave: (updates: Partial<Task>) => Promise<void>;
 }) {
+  const { t } = useLocale();
   const [status, setStatus] = useState(task.status);
   const [priority, setPriority] = useState(task.priority);
   const [progress, setProgress] = useState(task.progress_pct || 0);
@@ -85,7 +87,7 @@ export function TaskModal({ task, team, onClose, onSave }: {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-mono text-gray-300">#{task.id.slice(0,6).toUpperCase()}</span>
               {task.project_name && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: (task.project_color||"#6c5ce7") + "18", color: task.project_color||"#6c5ce7" }}>{task.project_name}</span>}
-              {isOverdue && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">Overdue</span>}
+              {isOverdue && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">{t("taskModal.overdue")}</span>}
             </div>
             <h2 className="text-lg font-bold text-gray-900">{task.title}</h2>
           </div>
@@ -96,21 +98,21 @@ export function TaskModal({ task, team, onClose, onSave }: {
           {/* Status + Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Status</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.status")}</label>
               <select value={status} onChange={e => setStatus(e.target.value as Task["status"])}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }}>
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
+                <option value="todo">{t("status.todo")}</option>
+                <option value="in_progress">{t("status.in_progress")}</option>
+                <option value="done">{t("status.done")}</option>
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Priority</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.priority")}</label>
               <select value={priority} onChange={e => setPriority(e.target.value as Task["priority"])}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                <option value="low">{t("priority.low")}</option>
+                <option value="medium">{t("priority.medium")}</option>
+                <option value="high">{t("priority.high")}</option>
               </select>
             </div>
           </div>
@@ -118,7 +120,7 @@ export function TaskModal({ task, team, onClose, onSave }: {
           {/* Progress slider */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Progress</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{t("taskModal.progress")}</label>
               <span className="text-sm font-bold" style={{ color: "#6c5ce7" }}>{progress}%</span>
             </div>
             <input type="range" min={0} max={100} value={progress} onChange={e => setProgress(+e.target.value)}
@@ -128,12 +130,12 @@ export function TaskModal({ task, team, onClose, onSave }: {
           {/* Time tracking */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Hours Worked</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.hoursWorked")}</label>
               <input type="number" step="0.5" min={0} value={hoursWorked} onChange={e => setHoursWorked(+e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Hours Estimated</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.hoursEst")}</label>
               <input type="number" step="0.5" min={0} value={hoursEstimated} onChange={e => setHoursEstimated(+e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
             </div>
@@ -147,12 +149,12 @@ export function TaskModal({ task, team, onClose, onSave }: {
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Start Date</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.startDate")}</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Due Date</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.dueDate")}</label>
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
             </div>
@@ -160,9 +162,9 @@ export function TaskModal({ task, team, onClose, onSave }: {
 
           {/* Description */}
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Description</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{t("taskModal.description")}</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-              placeholder="Add task description…"
+              placeholder={t("taskModal.description")}
               className="w-full px-3 py-2 text-sm rounded-xl border resize-none focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
           </div>
 
@@ -172,13 +174,13 @@ export function TaskModal({ task, team, onClose, onSave }: {
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}>
                 {task.assignee[0]}
               </div>
-              <span className="text-sm text-gray-700">Assigned to <span className="font-semibold">{task.assignee}</span></span>
+              <span className="text-sm text-gray-700">{t("taskModal.assignedTo")} <span className="font-semibold">{task.assignee}</span></span>
             </div>
           )}
 
           {/* Comments */}
           <div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-2">Comments ({comments.length})</label>
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-2">{t("taskModal.comments")} ({comments.length})</label>
             <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
               {comments.map(c => (
                 <div key={c.id} className="flex gap-2 p-2.5 rounded-lg bg-gray-50">
@@ -197,23 +199,23 @@ export function TaskModal({ task, team, onClose, onSave }: {
             </div>
             <div className="flex gap-2">
               <input value={newComment} onChange={e => setNewComment(e.target.value)}
-                placeholder="Add a comment…"
+                placeholder={t("taskModal.addComment")}
                 onKeyDown={e => e.key === "Enter" && handleComment()}
                 className="flex-1 px-3 py-2 text-sm rounded-xl border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
               <button onClick={handleComment} disabled={!newComment.trim()}
                 className="px-3 py-2 text-xs font-medium text-white rounded-xl disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}>Send</button>
+                style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}>{t("taskModal.send")}</button>
             </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-white border-t px-6 py-4 rounded-b-2xl flex justify-end gap-2" style={{ borderColor: "#e8eaf0" }}>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">{t("taskModal.cancel")}</button>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2 text-sm font-medium text-white rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
             style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}>
-            {saving ? "Saving…" : "Save Changes"}
+            {saving ? t("taskModal.saving") : t("taskModal.save")}
           </button>
         </div>
       </motion.div>

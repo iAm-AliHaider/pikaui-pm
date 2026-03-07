@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Document } from "@/lib/types";
+import { useLocale } from "../LocaleContext";
 
 const FILE_ICONS: Record<string, { icon: string; color: string }> = {
   doc:   { icon: "📄", color: "#3b82f6" },
@@ -19,6 +20,7 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
   projectName: string;
   onRefresh: () => void;
 }) {
+  const { t } = useLocale();
   const [showUpload, setShowUpload] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: "", file_url: "", file_type: "doc", description: "" });
   const [uploading, setUploading] = useState(false);
@@ -52,14 +54,14 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h3 className="text-base font-semibold text-gray-800">Document Library</h3>
-          <p className="text-xs text-gray-400">{projectName} — {documents.length} files</p>
+          <h3 className="text-base font-semibold text-gray-800">{t("docs.title")}</h3>
+          <p className="text-xs text-gray-400">{projectName} — {documents.length}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <input
               type="text"
-              placeholder="Search docs…"
+              placeholder={t("docs.search")}
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
               className="pl-8 pr-3 py-2 text-xs rounded-xl border bg-white focus:outline-none focus:border-purple-300 w-48"
@@ -72,7 +74,7 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
             className="px-3 py-2 text-xs font-medium text-white rounded-xl shadow-sm hover:shadow-md transition-all"
             style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
           >
-            + Add Document
+            {t("docs.upload")}
           </button>
         </div>
       </div>
@@ -87,7 +89,7 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
             className="mb-5 overflow-hidden"
           >
             <div className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: "#e8eaf0" }}>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Add Document</h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">{t("docs.upload")}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Document name *" value={uploadForm.name} onChange={e => setUploadForm({ ...uploadForm, name: e.target.value })}
                   className="px-3 py-2 text-sm rounded-lg border focus:outline-none focus:border-purple-300" style={{ borderColor: "#e8eaf0" }} />
@@ -109,9 +111,9 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
                 <button onClick={handleUpload} disabled={uploading || !uploadForm.name.trim()}
                   className="px-4 py-2 text-xs font-medium text-white rounded-lg disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}>
-                  {uploading ? "Adding…" : "Add Document"}
+                  {uploading ? "..." : t("docs.upload")}
                 </button>
-                <button onClick={() => setShowUpload(false)} className="px-4 py-2 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                <button onClick={() => setShowUpload(false)} className="px-4 py-2 text-xs text-gray-500 hover:text-gray-700">{t("createTask.cancel")}</button>
               </div>
             </div>
           </motion.div>
@@ -122,8 +124,7 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <span className="text-4xl mb-3">📁</span>
-          <p className="text-sm text-gray-500 font-medium">No documents yet</p>
-          <p className="text-xs text-gray-400 mt-1">Add project files, specs, and reports here.</p>
+          <p className="text-sm text-gray-500 font-medium">{t("docs.noDocs")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -148,7 +149,7 @@ export function DocsTab({ documents, projectId, projectName, onRefresh }: {
                       <span className="capitalize">{doc.file_type}</span>
                       <span>·</span>
                       <span>{new Date(doc.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                      {doc.qdrant_indexed && <span className="text-purple-500">· Indexed</span>}
+                      {doc.qdrant_indexed && <span className="text-purple-500">· {t("docs.indexed")}</span>}
                     </div>
                   </div>
                 </div>
