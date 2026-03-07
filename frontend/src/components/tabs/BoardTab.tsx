@@ -44,13 +44,13 @@ export function BoardTab({ tasks, project, onTaskClick, onRefresh, onCreateTask,
   const isOverdue = (t: Task) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "done";
 
   return (
-    <div className="p-5 h-full">
-      <div className="flex gap-4 h-full" style={{ minHeight: "500px" }}>
+    <div className="p-2 sm:p-5 h-full">
+      <div className="flex gap-3 sm:gap-4 h-full overflow-x-auto pb-2" style={{ minHeight: "500px" }}>
         {COLS.map(col => {
           const colTasks = tasks.filter(t => t.status === col.id);
           return (
             <div key={col.id}
-              className="flex-1 flex flex-col min-w-[220px] rounded-2xl overflow-hidden"
+              className="flex-1 flex flex-col min-w-[270px] sm:min-w-[220px] rounded-2xl overflow-hidden"
               style={{ background: col.headerBg, border: droppingCol === col.id ? `2px dashed ${col.dotColor}` : "2px solid transparent" }}
               onDragOver={e => { e.preventDefault(); setDroppingCol(col.id); }}
               onDragLeave={() => setDroppingCol(null)}

@@ -84,7 +84,7 @@ export function FloatingVoiceButton({ activeProjectName, activeTab, lastToast }:
   const isPulsing = voiceState === "listening" || voiceState === "agent_speaking" || voiceState === "user_speaking";
 
   return (
-    <div className="fixed bottom-6 inset-x-0 flex flex-col items-center gap-3 z-50 pointer-events-none">
+    <div className="fixed inset-x-0 flex flex-col items-center gap-2 sm:gap-3 z-50 pointer-events-none ptt-fixed">
       {/* ── Toast bubble ────────────────────────────────── */}
       <AnimatePresence>
         {toastVisible && toastText && (
@@ -93,7 +93,7 @@ export function FloatingVoiceButton({ activeProjectName, activeTab, lastToast }:
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.96 }}
             transition={{ duration: 0.2 }}
-            className="pointer-events-auto max-w-sm text-center text-sm text-gray-700 bg-white rounded-2xl px-4 py-2.5 shadow-md"
+            className="pointer-events-auto mx-4 max-w-sm text-center text-sm text-gray-700 bg-white rounded-2xl px-4 py-2.5 shadow-md"
             style={{ border: "1.5px solid #f0f0f0" }}
           >
             {toastText}
@@ -110,7 +110,7 @@ export function FloatingVoiceButton({ activeProjectName, activeTab, lastToast }:
           background: cfg.bg,
           border: `2px solid ${cfg.border}`,
           padding: "10px 20px 10px 14px",
-          minWidth: "230px",
+          minWidth: "min(90vw, 230px)",
           cursor: isConnected ? "pointer" : "default",
         }}
       >

@@ -59,15 +59,15 @@ export function Dashboard({
   const [showCreateProject, setShowCreateProject] = useState(false);
 
   const TABS = [
-    { id: "overview",    label: t("tab.overview"),    icon: "O" },
-    { id: "board",       label: t("tab.board"),       icon: "B" },
-    { id: "team",        label: t("tab.team"),        icon: "T" },
-    { id: "docs",        label: t("tab.documents"),   icon: "D" },
-    { id: "analytics",   label: t("tab.analytics"),  icon: "A" },
-    { id: "milestones",  label: t("tab.milestones"),  icon: "M" },
-    { id: "timelog",     label: t("tab.timelog"),     icon: "L" },
-    { id: "activity",    label: t("tab.activity"),    icon: "X" },
-    { id: "summary",     label: t("tab.summary"),     icon: "S" },
+    { id: "overview",    label: t("tab.overview"),   icon: "OV" },
+    { id: "board",       label: t("tab.board"),      icon: "BD" },
+    { id: "team",        label: t("tab.team"),       icon: "TM" },
+    { id: "docs",        label: t("tab.documents"),  icon: "DC" },
+    { id: "analytics",   label: t("tab.analytics"), icon: "AN" },
+    { id: "milestones",  label: t("tab.milestones"), icon: "MS" },
+    { id: "timelog",     label: t("tab.timelog"),    icon: "TL" },
+    { id: "activity",    label: t("tab.activity"),   icon: "AC" },
+    { id: "summary",     label: t("tab.summary"),    icon: "SU" },
   ];
 
   const activeProject = data.projects.find(p => p.id === activeProjectId) ?? data.projects[0];
@@ -83,7 +83,7 @@ export function Dashboard({
   return (
     <div className="flex flex-col h-full">
       {/* ── Top Header ────────────────────────────────── */}
-      <header className="flex-shrink-0 bg-white border-b px-6 py-3" style={{ borderColor: "#e8eaf0" }}>
+      <header className="flex-shrink-0 bg-white border-b px-3 sm:px-6 py-2 sm:py-3" style={{ borderColor: "#e8eaf0" }}>
         <div className="flex items-center justify-between gap-4">
           {/* Project selector */}
           <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
@@ -107,7 +107,7 @@ export function Dashboard({
 
           {/* Project stats */}
           {activeProject && (
-            <div className="flex items-center gap-3 flex-shrink-0 text-xs text-gray-500">
+            <div className="hidden sm:flex items-center gap-3 flex-shrink-0 text-xs text-gray-500">
               <span className="flex items-center gap-1">
                 <span className="font-semibold text-gray-800">{Number(activeProject.done_tasks)}</span>
                 <span>/ {Number(activeProject.total_tasks)} tasks</span>
@@ -138,17 +138,18 @@ export function Dashboard({
           )}
 
           {/* New Task & New Project buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={() => setShowCreateTask(true)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl text-white"
+              className="px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-xl text-white"
               style={{ background: "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
             >
-              {t("header.newTask")}
+              <span className="sm:hidden">+ Task</span>
+              <span className="hidden sm:inline">{t("header.newTask")}</span>
             </button>
             <button
               onClick={() => setShowCreateProject(true)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border"
+              className="hidden sm:block px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border"
               style={{ borderColor: "#6c5ce7", color: "#6c5ce7" }}
             >
               {t("header.newProject")}
@@ -160,15 +161,16 @@ export function Dashboard({
 
       {/* ── Tab Bar ───────────────────────────────────── */}
       <div className="flex-shrink-0 bg-white border-b overflow-x-auto" style={{ borderColor: "#e8eaf0" }}>
-        <div className="flex gap-1 px-6 min-w-max">
+        <div className="flex gap-0.5 sm:gap-1 px-2 sm:px-6 min-w-max">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap"
+              className="relative px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
               style={{ color: activeTab === tab.id ? "#6c5ce7" : "#9ca3af" }}
             >
-              {tab.label}
+              <span className="sm:hidden">{tab.icon}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
               {activeTab === tab.id && (
                 <motion.div
                   layoutId="tab-indicator"
@@ -182,7 +184,7 @@ export function Dashboard({
       </div>
 
       {/* ── Tab Content ───────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-28">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
