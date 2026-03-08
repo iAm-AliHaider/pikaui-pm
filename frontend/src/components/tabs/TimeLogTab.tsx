@@ -299,7 +299,7 @@ export function TimeLogTab({ projectId, projectName, team }: TimeLogTabProps) {
                           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                           style={{ background: log.avatar_color || "linear-gradient(135deg,#6c5ce7,#0984e3)" }}
                         >
-                          {log.user_name[0]}
+                          {(log.user_name || "?")[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">{log.task_title || "Untitled task"}</p>

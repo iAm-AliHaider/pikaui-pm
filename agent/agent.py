@@ -870,6 +870,38 @@ async def add_milestone(context: RunContext, name: str, project_name: str = "", 
     return f"Milestone '{name}' added to {proj['name']}."
 
 
+@function_tool()
+async def show_timelog(context: RunContext, project_name: str = ""):
+    """Switch to the Time Log tab to see logged hours, contributor stats, and daily breakdowns."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        proj = await conn.fetchrow(
+            "SELECT id, name FROM projects WHERE name ILIKE $1" if project_name
+            else "SELECT id, name FROM projects WHERE status='active' LIMIT 1",
+            *([f"%{project_name}%"] if project_name else [])
+        )
+        if not proj:
+            # fallback: pick from context
+            ctx_name = _current_context.get("activeProjectName", "")
+            if ctx_name:
+                proj = await conn.fetchrow(
+                    "SELECT id, name FROM projects WHERE name ILIKE $1", f"%{ctx_name}%"
+                )
+        if not proj:
+            proj = await conn.fetchrow("SELECT id, name FROM projects LIMIT 1")
+        if not proj:
+            return "No project found."
+        total = await conn.fetchval(
+            "SELECT COALESCE(SUM(hours),0) FROM time_logs WHERE project_id=$1", proj["id"]
+        )
+    await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)
+    await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.15)
+    await _send_event("switch_tab", {"tab": "timelog"})
+    return f"{proj['name']} has {float(total):.1f}h logged. Showing time log tab."
+
+
 
 # ── Activity log helper ───────────────────────────────
 async def _log_activity(conn, project_id, task_id, user_name, action, entity_type, entity_name, meta=None):
@@ -1340,6 +1372,7 @@ TOOLS AVAILABLE:
 26. show_blockers        → Show what's b
 27. ask_database          Answer ANY data question in plain language (ad-hoc SQL)
 28. correct_query         Retry last query when user says the answer was wrong
+29. show_timelog          Switch to the time log tab for a project
 
 VOICE RULES:
 - Max 1-2 sentences per response. This is voice.
@@ -1475,6 +1508,7 @@ async def entrypoint(ctx: JobContext):
                     log_time, show_milestones, add_milestone,
                     get_activity_feed, suggest_assignee, cross_project_summary,
                     generate_report, add_dependency, show_blockers, ask_database, correct_query,
+                    show_timelog,
                 ],
             )
 

@@ -118,7 +118,12 @@ export default function Home() {
 
     // Navigation events (primary path — agent sends these with retry logic)
     if (t === "switch_tab") {
-      setActiveTab(event.tab as string);
+      const tab = event.tab as string;
+      setActiveTab(tab);
+      // Also trigger analytics fetch when switching to data-heavy tabs
+      if (ANALYTICS_TABS.has(tab)) {
+        setTimeout(() => fetchAnalytics(activeProjectIdRef.current), 300);
+      }
       return;
     }
 
@@ -171,8 +176,27 @@ export default function Home() {
         setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 300);
       }
 
-      // KanbanBoard / other widgets — just refresh data
-      if (component === "KanbanBoard" || component === "SprintAnalytics" || component === "TeamWorkload") {
+      // KanbanBoard — switch to board tab + refresh data
+      if (component === "KanbanBoard") {
+        setActiveTab("board");
+        setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 200);
+      }
+
+      // SprintAnalytics — switch to analytics tab + fetch analytics
+      if (component === "SprintAnalytics") {
+        setActiveTab("analytics");
+        setTimeout(() => fetchAnalytics(activeProjectIdRef.current), 300);
+      }
+
+      // TeamWorkload — switch to team tab + refresh data
+      if (component === "TeamWorkload") {
+        setActiveTab("team");
+        setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 200);
+      }
+
+      // TimeLogSummary — switch to timelog tab + refresh data
+      if (component === "TimeLogSummary") {
+        setActiveTab("timelog");
         setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 200);
       }
 
@@ -186,7 +210,7 @@ export default function Home() {
         });
       }
     }
-  }, [fetchData]);
+  }, [fetchData, fetchAnalytics]);
 
   // Show login screen if no user is authenticated
   if (!currentUser) return <LoginScreen />;
