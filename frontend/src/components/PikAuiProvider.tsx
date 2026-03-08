@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useCallback, useEffect, useRef } from "react";
-import { RoomEvent } from "livekit-client";
+import { RoomEvent, ConnectionState } from "livekit-client";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from "@livekit/components-react";
 import { getLiveKitUrl } from "@/lib/livekit-config";
 import { FloatingVoiceButton } from "./FloatingVoiceButton";
@@ -70,6 +70,8 @@ function DataChannelListener({ onVoiceEvent }: { onVoiceEvent?: (e: { type: stri
 }
 
 // ── Context sync sender — tells agent what user is looking at ─────────────────
+// Sends on: (1) initial connection, (2) any state change, (3) re-connects.
+// Retries on connection events to ensure the agent always has fresh context.
 function ContextSender({ activeTab, activeProjectId, activeProjectName }: {
   activeTab?: string;
   activeProjectId?: string | null;
@@ -77,17 +79,44 @@ function ContextSender({ activeTab, activeProjectId, activeProjectName }: {
 }) {
   const room = useRoomContext();
 
+  // Keep latest context in a ref so the connection handler always sends fresh values
+  const contextRef = useRef({ activeTab, activeProjectId, activeProjectName });
   useEffect(() => {
+    contextRef.current = { activeTab, activeProjectId, activeProjectName };
+  }, [activeTab, activeProjectId, activeProjectName]);
+
+  const sendContext = useCallback(() => {
     if (!room?.localParticipant) return;
+    if (room.state !== ConnectionState.Connected) return;
     try {
       const payload = new TextEncoder().encode(JSON.stringify({
-        activeTab:         activeTab ?? "overview",
-        activeProjectId:   activeProjectId ?? null,
-        activeProjectName: activeProjectName ?? "",
+        activeTab:         contextRef.current.activeTab         ?? "overview",
+        activeProjectId:   contextRef.current.activeProjectId   ?? null,
+        activeProjectName: contextRef.current.activeProjectName ?? "",
       }));
       room.localParticipant.publishData(payload, { topic: "context_sync", reliable: true });
-    } catch { /* room not ready yet */ }
-  }, [room, activeTab, activeProjectId, activeProjectName]);
+    } catch { /* race: room not fully ready */ }
+  }, [room]);
+
+  // Send on connection established (catches initial join + re-connects)
+  useEffect(() => {
+    if (!room) return;
+    const onConnected = () => {
+      // Small delay to let agent participant fully join before sending
+      setTimeout(sendContext, 800);
+    };
+    room.on(RoomEvent.Connected, onConnected);
+    // Also send immediately if already connected (component mounted after connect)
+    if (room.state === ConnectionState.Connected) {
+      setTimeout(sendContext, 400);
+    }
+    return () => { room.off(RoomEvent.Connected, onConnected); };
+  }, [room, sendContext]);
+
+  // Send on every state change (tab, project)
+  useEffect(() => {
+    sendContext();
+  }, [sendContext, activeTab, activeProjectId, activeProjectName]);
 
   return null;
 }

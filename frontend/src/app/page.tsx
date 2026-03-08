@@ -125,6 +125,7 @@ export default function Home() {
     if (t === "switch_project") {
       const pid = (event.projectId as string)?.trim();
       if (pid) {
+        activeProjectIdRef.current = pid;  // sync update so refresh events see new id
         setActiveProjectId(pid);
         setTimeout(() => fetchData(pid), 150);
       }

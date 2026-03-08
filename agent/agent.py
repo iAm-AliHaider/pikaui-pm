@@ -138,6 +138,7 @@ async def list_projects(context: RunContext):
         """)
     projects = [_row(r) for r in rows]
     await _send_event("switch_tab", {"tab": "overview"})
+    await asyncio.sleep(0.1)
     await _send_ui("ProjectList", {"projects": projects})
     return f"Found {len(projects)} projects: {', '.join(p['name'] for p in projects)}."
 
@@ -183,7 +184,9 @@ async def show_project_detail(context: RunContext, project_name: str = ""):
     detail["team"] = [_row(m) for m in team]
     detail["stats"] = _row(stats)
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)
     await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.15)
     await _send_event("switch_tab", {"tab": "overview"})
     await _send_ui("ProjectDetail", {"project": detail})
     return f"Showing {proj['name']} — managed by {proj.get('manager_name', 'unassigned')}."
@@ -218,7 +221,9 @@ async def show_board(context: RunContext, project_name: str = ""):
     tasks = [_row(r) for r in rows]
     # Correct order: set project first so Board tab opens with the right data
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)
     await _send_event("refresh", {"section": "data"})   # force frontend data re-fetch
+    await asyncio.sleep(0.15)
     await _send_event("switch_tab", {"tab": "board"})
     await _send_ui("KanbanBoard", {"tasks": tasks, "projectName": proj["name"]})
     return f"Board for {proj['name']} — {len(tasks)} tasks."
@@ -480,7 +485,9 @@ async def list_documents(context: RunContext, project_name: str = ""):
         """, proj["id"])
     documents = [_row(d) for d in docs]
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)
     await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.15)
     await _send_event("switch_tab", {"tab": "docs"})
     await _send_ui("DocLibrary", {"documents": documents, "projectName": proj["name"]})
     return f"Showing {len(documents)} document(s) for {proj['name']}."
@@ -585,7 +592,9 @@ async def show_full_analytics(context: RunContext, project_name: str = ""):
             proj = await conn.fetchrow("SELECT id, name FROM projects WHERE status='active' LIMIT 1")
     if proj:
         await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+        await asyncio.sleep(0.15)
         await _send_event("refresh", {"section": "analytics"})
+        await asyncio.sleep(0.15)
         await _send_event("switch_tab", {"tab": "analytics"})
         await _send_event("refresh", {"section": "analytics"})
         return f"Switching to analytics for {proj['name']}. Burndown, velocity, budget, team utilization, milestones and risks are shown."
@@ -824,7 +833,9 @@ async def show_milestones(context: RunContext, project_name: str = ""):
     soon    = sum(1 for m in milestones if m["health"] == "soon")
 
     await _send_event("switch_project", {"projectId": str(proj["id"]), "projectName": proj["name"]})
+    await asyncio.sleep(0.15)
     await _send_event("refresh", {"section": "data"})
+    await asyncio.sleep(0.15)
     await _send_event("switch_tab", {"tab": "milestones"})
     await _send_event("refresh", {"section": "milestones"})
 
@@ -1325,7 +1336,7 @@ TOOLS AVAILABLE:
 24. generate_report      → Full project status report with metrics, risks, recommendations
 25. add_dependency       → Mark task blocked by another task
 26. show_blockers        → Show what's b
-27. ask_database          Answer ANY data question in plain language (ad-hoc SQL)locked and by what
+27. ask_database          Answer ANY data question in plain language (ad-hoc SQL)
 28. correct_query         Retry last query when user says the answer was wrong
 
 VOICE RULES:
