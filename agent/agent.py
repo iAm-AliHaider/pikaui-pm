@@ -12,7 +12,11 @@ from livekit.agents import (
     WorkerOptions, cli, function_tool, RunContext,
 )
 from livekit.plugins import deepgram, openai, silero
-from text_to_sql import ask_database as _ask_db
+from text_to_sql import (
+    ask_database_full as _ask_db_full,
+    retry_with_correction as _retry_correction,
+    build_schema_context as _build_schema,
+)
 try:
     from livekit.plugins import azure as lk_azure
     _HAS_AZURE = True
@@ -1243,11 +1247,44 @@ async def show_blockers(context: RunContext, task_title: str = ""):
 async def ask_database(context: RunContext, question: str) -> str:
     """Answer any natural language question about projects, tasks, team, or time logs.
     Use for ad-hoc queries not covered by specific tools:
-    'which tasks have not moved in 5 days', 'who logged the most hours this week',
-    'what tasks have no assignee', 'show budget burn per project'.
+    which tasks have not moved in 5 days, who logged the most hours this week,
+    what tasks have no assignee, show budget burn per project.
     """
     pool = await get_pool()
-    return await _ask_db(pool, question, OPENAI_API_KEY)
+    voice_text, rows, columns = await _ask_db_full(pool, question, OPENAI_API_KEY)
+
+    # Send DataTable widget to frontend when there are multiple rows
+    if rows and len(rows) > 1:
+        await _send_ui("DataTable", {
+            "title":    question,
+            "columns":  columns,
+            "rows":     rows[:20],
+            "rowCount": len(rows),
+        })
+
+    return voice_text
+
+
+@function_tool()
+async def correct_query(context: RunContext, hint: str = "") -> str:
+    """Retry the last database query with a correction hint.
+    Use when the user says the previous answer was wrong, incorrect, or asks to try again.
+    Accepts an optional hint describing what was wrong or how to fix it.
+    """
+    pool = await get_pool()
+    voice_text, rows, columns = await _retry_correction(
+        pool, hint or "try a different approach", OPENAI_API_KEY
+    )
+
+    if rows and len(rows) > 1:
+        await _send_ui("DataTable", {
+            "title":    "Corrected result",
+            "columns":  columns,
+            "rows":     rows[:20],
+            "rowCount": len(rows),
+        })
+
+    return voice_text
 
 
 # ═══════════════════════════════════════════════════════
@@ -1289,6 +1326,7 @@ TOOLS AVAILABLE:
 25. add_dependency       → Mark task blocked by another task
 26. show_blockers        → Show what's b
 27. ask_database          Answer ANY data question in plain language (ad-hoc SQL)locked and by what
+28. correct_query         Retry last query when user says the answer was wrong
 
 VOICE RULES:
 - Max 1-2 sentences per response. This is voice.
@@ -1340,6 +1378,14 @@ async def entrypoint(ctx: JobContext):
     global _room_ref, _pool
     _pool = None  # Reset so a fresh pool is created for this job event loop
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
+    # Auto-discover pikaui schema for ask_database (once per session)
+    try:
+        _sc_pool = await get_pool()
+        await _build_schema(_sc_pool)
+        logger.info("Schema context built from information_schema")
+    except Exception as _se:
+        logger.warning(f"Schema discovery skipped: {_se}")
     _room_ref = ctx.room
     logger.info(f"Connected: {ctx.room.name}")
 
@@ -1415,7 +1461,7 @@ async def entrypoint(ctx: JobContext):
                     show_full_analytics, detect_risks, daily_standup,
                     log_time, show_milestones, add_milestone,
                     get_activity_feed, suggest_assignee, cross_project_summary,
-                    generate_report, add_dependency, show_blockers, ask_database,
+                    generate_report, add_dependency, show_blockers, ask_database, correct_query,
                 ],
             )
 
