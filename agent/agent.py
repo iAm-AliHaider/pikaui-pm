@@ -34,8 +34,9 @@ AGENT_NAME   = "pikaui-pm"
 _pool: asyncpg.Pool | None = None
 
 async def _init_conn(conn):
-    """Called by asyncpg for every new pool connection. Neon pooler ignores
-    server_settings, so we must SET search_path explicitly after connect."""
+    """Called by asyncpg on new connection (init=) AND every acquire (setup=).
+    Neon PgBouncer resets connection state between pool uses, so search_path
+    must be set on every acquire to ensure pikaui schema is always active."""
     await conn.execute("SET search_path TO pikaui")
 
 
@@ -50,7 +51,8 @@ async def get_pool() -> asyncpg.Pool:
         _pool = None
     _pool = await asyncpg.create_pool(
         DATABASE_URL,
-        init=_init_conn,
+        init=_init_conn,    # called on new connection creation
+        setup=_init_conn,   # called on every pool.acquire() — survives Neon PgBouncer resets
         min_size=1, max_size=5,
     )
     return _pool
