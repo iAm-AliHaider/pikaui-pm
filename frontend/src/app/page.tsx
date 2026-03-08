@@ -6,9 +6,10 @@ import { Dashboard }       from "@/components/Dashboard";
 import { LanguageToggle, useLocale } from "@/components/LocaleContext";
 import { fetchToken }      from "@/lib/livekit-config";
 import { DashboardData, Task, AnalyticsData } from "@/lib/types";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/UserContext";
 import { LoginScreen } from "@/components/LoginScreen";
+import DataTableWidget from "@/components/DataTableWidget";
 
 const ANALYTICS_TABS = new Set(["analytics", "milestones", "timelog", "summary"]);
 
@@ -26,6 +27,12 @@ export default function Home() {
   const [voiceSessionActive, setVoiceSessionActive] = useState(false);
   const [lastToast, setLastToast]                 = useState<string | null>(null);
   const [roomName] = useState(() => `pikAui-pm-${Date.now()}`);
+  const [activeDataTable, setActiveDataTable] = useState<{
+    title: string;
+    columns: string[];
+    rows: unknown[][];
+    rowCount: number;
+  } | null>(null);
 
   const refreshAnalyticsRef = useRef<() => void>(() => {});
   const activeProjectIdRef  = useRef<string | null>(null);
@@ -167,6 +174,16 @@ export default function Home() {
       if (component === "KanbanBoard" || component === "SprintAnalytics" || component === "TeamWorkload") {
         setTimeout(() => fetchData(activeProjectIdRef.current ?? undefined), 200);
       }
+
+      // DataTable: show floating table widget above PTT button
+      if (component === "DataTable") {
+        setActiveDataTable({
+          title:    (props?.title as string) || "Query Results",
+          columns:  (props?.columns as string[]) || [],
+          rows:     (props?.rows as unknown[][]) || [],
+          rowCount: (props?.rowCount as number) || 0,
+        });
+      }
     }
   }, [fetchData]);
 
@@ -224,6 +241,17 @@ export default function Home() {
             </div>
           )}
         </div>
+        <AnimatePresence>
+          {activeDataTable && (
+            <DataTableWidget
+              title={activeDataTable.title}
+              columns={activeDataTable.columns}
+              rows={activeDataTable.rows}
+              rowCount={activeDataTable.rowCount}
+              onDismiss={() => setActiveDataTable(null)}
+            />
+          )}
+        </AnimatePresence>
       </PikAuiProvider>
     </div>
   );
