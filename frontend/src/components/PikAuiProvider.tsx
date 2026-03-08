@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useRef } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { RoomEvent, ConnectionState } from "livekit-client";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from "@livekit/components-react";
 import { getLiveKitUrl } from "@/lib/livekit-config";
@@ -10,11 +10,9 @@ interface PikAuiProviderProps {
   children: ReactNode;
   token: string;
   onVoiceEvent?: (event: { type: string; [k: string]: unknown }) => void;
-  // Screen context — sent to agent so it knows what user is looking at
   activeTab?: string;
   activeProjectId?: string | null;
   activeProjectName?: string;
-  // Toast shown near the floating button
   lastToast?: string | null;
 }
 
@@ -24,9 +22,9 @@ export function PikAuiProvider({
 }: PikAuiProviderProps) {
   return (
     <LiveKitRoom
-      token={token}
+      token={token ?? ""}
       serverUrl={getLiveKitUrl()}
-      connect={true}
+      connect={!!(token)}
       className="h-full w-full flex overflow-hidden"
     >
       <RoomAudioRenderer />
@@ -47,39 +45,99 @@ export function PikAuiProvider({
 }
 
 // ── Data channel receiver ─────────────────────────────────────────────────────
-function DataChannelListener({ onVoiceEvent }: { onVoiceEvent?: (e: { type: string; [k: string]: unknown }) => void }) {
+function DataChannelListener({
+  onVoiceEvent,
+}: {
+  onVoiceEvent?: (e: { type: string; [k: string]: unknown }) => void;
+}) {
   const room = useRoomContext();
   const onVoiceEventRef = useRef(onVoiceEvent);
   useEffect(() => { onVoiceEventRef.current = onVoiceEvent; }, [onVoiceEvent]);
 
-  const handleData = useCallback((payload: Uint8Array, _p: unknown, _k: unknown, topic?: string) => {
-    if (topic !== "ui_sync") return;
-    try {
-      const msg = JSON.parse(new TextDecoder().decode(payload));
-      onVoiceEventRef.current?.(msg);
-    } catch { /* ignore malformed */ }
-  }, []);
+  const handleData = useCallback(
+    (payload: Uint8Array, _p: unknown, _k: unknown, topic?: string) => {
+      // Log every data packet for debugging (topic + first 80 chars)
+      const raw = new TextDecoder().decode(payload);
+      console.log("[DataChannel] received | topic:", topic, "| data:", raw.slice(0, 80));
+
+      if (topic !== "ui_sync") return;
+
+      try {
+        const msg = JSON.parse(raw) as { type: string; [k: string]: unknown };
+        console.log("[DataChannel] dispatching event:", msg.type, msg);
+        onVoiceEventRef.current?.(msg);
+      } catch (e) {
+        console.warn("[DataChannel] JSON parse error:", e, "raw:", raw);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!room) return;
+    console.log("[DataChannel] registering listener on room:", room.name);
     room.on(RoomEvent.DataReceived, handleData);
-    return () => { room.off(RoomEvent.DataReceived, handleData); };
+    return () => {
+      console.log("[DataChannel] removing listener");
+      room.off(RoomEvent.DataReceived, handleData);
+    };
   }, [room, handleData]);
 
-  return null;
+  // Debug badge — shows last received event type in bottom-left corner
+  const [lastEvent, setLastEvent] = useState<string>("");
+  useEffect(() => {
+    if (!room) return;
+    const dbg = (payload: Uint8Array, _p: unknown, _k: unknown, topic?: string) => {
+      if (topic === "ui_sync") {
+        try {
+          const m = JSON.parse(new TextDecoder().decode(payload)) as { type: string };
+          setLastEvent(m.type);
+          // Clear after 3 seconds
+          setTimeout(() => setLastEvent(""), 3000);
+        } catch { /* ignore */ }
+      }
+    };
+    room.on(RoomEvent.DataReceived, dbg);
+    return () => { room.off(RoomEvent.DataReceived, dbg); };
+  }, [room]);
+
+  if (!lastEvent) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 112,
+        left: "50%",
+        transform: "translateX(-50%)",
+        background: "#7c3aed",
+        color: "#fff",
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "3px 10px",
+        borderRadius: 99,
+        zIndex: 9999,
+        pointerEvents: "none",
+        letterSpacing: "0.03em",
+        opacity: 0.92,
+      }}
+    >
+      {lastEvent}
+    </div>
+  );
 }
 
-// ── Context sync sender — tells agent what user is looking at ─────────────────
-// Sends on: (1) initial connection, (2) any state change, (3) re-connects.
-// Retries on connection events to ensure the agent always has fresh context.
-function ContextSender({ activeTab, activeProjectId, activeProjectName }: {
+// ── Context sync sender — tells agent what tab + project user is on ─────────
+function ContextSender({
+  activeTab,
+  activeProjectId,
+  activeProjectName,
+}: {
   activeTab?: string;
   activeProjectId?: string | null;
   activeProjectName?: string;
 }) {
   const room = useRoomContext();
 
-  // Keep latest context in a ref so the connection handler always sends fresh values
   const contextRef = useRef({ activeTab, activeProjectId, activeProjectName });
   useEffect(() => {
     contextRef.current = { activeTab, activeProjectId, activeProjectName };
@@ -89,34 +147,31 @@ function ContextSender({ activeTab, activeProjectId, activeProjectName }: {
     if (!room?.localParticipant) return;
     if (room.state !== ConnectionState.Connected) return;
     try {
-      const payload = new TextEncoder().encode(JSON.stringify({
-        activeTab:         contextRef.current.activeTab         ?? "overview",
-        activeProjectId:   contextRef.current.activeProjectId   ?? null,
-        activeProjectName: contextRef.current.activeProjectName ?? "",
-      }));
+      const payload = new TextEncoder().encode(
+        JSON.stringify({
+          activeTab:         contextRef.current.activeTab         ?? "overview",
+          activeProjectId:   contextRef.current.activeProjectId   ?? null,
+          activeProjectName: contextRef.current.activeProjectName ?? "",
+        }),
+      );
       room.localParticipant.publishData(payload, { topic: "context_sync", reliable: true });
-    } catch { /* race: room not fully ready */ }
+      console.log("[ContextSender] sent:", contextRef.current);
+    } catch (e) {
+      console.warn("[ContextSender] send failed:", e);
+    }
   }, [room]);
 
-  // Send on connection established (catches initial join + re-connects)
+  // Send on room connect + when already connected on mount
   useEffect(() => {
     if (!room) return;
-    const onConnected = () => {
-      // Small delay to let agent participant fully join before sending
-      setTimeout(sendContext, 800);
-    };
+    const onConnected = () => { setTimeout(sendContext, 800); };
     room.on(RoomEvent.Connected, onConnected);
-    // Also send immediately if already connected (component mounted after connect)
-    if (room.state === ConnectionState.Connected) {
-      setTimeout(sendContext, 400);
-    }
+    if (room.state === ConnectionState.Connected) { setTimeout(sendContext, 400); }
     return () => { room.off(RoomEvent.Connected, onConnected); };
   }, [room, sendContext]);
 
-  // Send on every state change (tab, project)
-  useEffect(() => {
-    sendContext();
-  }, [sendContext, activeTab, activeProjectId, activeProjectName]);
+  // Send on every tab/project change
+  useEffect(() => { sendContext(); }, [sendContext, activeTab, activeProjectId, activeProjectName]);
 
   return null;
 }
