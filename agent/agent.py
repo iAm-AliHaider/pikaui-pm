@@ -12,6 +12,7 @@ from livekit.agents import (
     WorkerOptions, cli, function_tool, RunContext,
 )
 from livekit.plugins import deepgram, openai, silero
+from text_to_sql import ask_database as _ask_db
 try:
     from livekit.plugins import azure as lk_azure
     _HAS_AZURE = True
@@ -22,6 +23,7 @@ load_dotenv()
 logger = logging.getLogger("pikaui-pm")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY", "")
 AGENT_NAME   = "pikaui-pm"
 
 # ── Singleton DB pool ──────────────────────────────────
@@ -1234,6 +1236,21 @@ async def show_blockers(context: RunContext, task_title: str = ""):
 
 
 # ═══════════════════════════════════════════════════════
+#  TOOL: ask_database  (text-to-SQL, read-only)
+# ═══════════════════════════════════════════════════════
+
+@function_tool()
+async def ask_database(context: RunContext, question: str) -> str:
+    """Answer any natural language question about projects, tasks, team, or time logs.
+    Use for ad-hoc queries not covered by specific tools:
+    'which tasks have not moved in 5 days', 'who logged the most hours this week',
+    'what tasks have no assignee', 'show budget burn per project'.
+    """
+    pool = await get_pool()
+    return await _ask_db(pool, question, OPENAI_API_KEY)
+
+
+# ═══════════════════════════════════════════════════════
 #  AGENT
 # ═══════════════════════════════════════════════════════
 
@@ -1270,7 +1287,8 @@ TOOLS AVAILABLE:
 23. cross_project_summary → Health scorecard comparing all projects
 24. generate_report      → Full project status report with metrics, risks, recommendations
 25. add_dependency       → Mark task blocked by another task
-26. show_blockers        → Show what's blocked and by what
+26. show_blockers        → Show what's b
+27. ask_database          Answer ANY data question in plain language (ad-hoc SQL)locked and by what
 
 VOICE RULES:
 - Max 1-2 sentences per response. This is voice.
@@ -1397,7 +1415,7 @@ async def entrypoint(ctx: JobContext):
                     show_full_analytics, detect_risks, daily_standup,
                     log_time, show_milestones, add_milestone,
                     get_activity_feed, suggest_assignee, cross_project_summary,
-                    generate_report, add_dependency, show_blockers,
+                    generate_report, add_dependency, show_blockers, ask_database,
                 ],
             )
 
